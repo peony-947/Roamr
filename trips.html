@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Trips — Roamr</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Instrument+Sans:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared.css">
+<style>
+.page-header { padding: 6.5rem 3rem 2rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 1.5rem; }
+.filters { display: flex; gap: 0.75rem; flex-wrap: wrap; margin-top: 1.5rem; }
+.filter-btn { padding: 0.45rem 1rem; border-radius: 2px; border: 1px solid var(--border2); background: transparent; color: var(--muted); font-size: 0.78rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; cursor: pointer; transition: all 0.15s; font-family: 'Instrument Sans', sans-serif; }
+.filter-btn:hover, .filter-btn.active { background: rgba(232,76,43,0.12); border-color: rgba(232,76,43,0.35); color: var(--accent); }
+.trips-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1.25rem; padding: 2.5rem 3rem; }
+.trip-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px; padding: 1.75rem; transition: all 0.2s; cursor: pointer; }
+.trip-card:hover { border-color: var(--border2); transform: translateY(-2px); }
+.trip-dest { font-family: 'Bebas Neue', sans-serif; font-size: 1.6rem; line-height: 1; margin-bottom: 0.35rem; }
+.trip-dates { font-size: 0.82rem; color: var(--muted); margin-bottom: 1rem; }
+.trip-desc { font-size: 0.875rem; color: var(--muted); line-height: 1.65; margin-bottom: 1rem; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.trip-tags { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-bottom: 1.25rem; }
+.trip-tag { font-size: 0.7rem; font-weight: 600; padding: 0.2rem 0.55rem; border-radius: 2px; background: rgba(255,255,255,0.05); color: var(--muted); text-transform: uppercase; }
+.trip-footer { display: flex; align-items: center; justify-content: space-between; padding-top: 1rem; border-top: 1px solid var(--border); }
+.trip-host { display: flex; align-items: center; gap: 0.65rem; }
+.urgency { font-size: 0.75rem; color: var(--accent2); font-weight: 600; }
+
+/* POST MODAL */
+.post-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+@media(max-width:600px){.post-grid{grid-template-columns:1fr}}
+@media(max-width:900px){.page-header{padding:5.5rem 1.5rem 1.5rem}.trips-grid{padding:1.5rem;grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<nav>
+  <a href="index.html" class="logo">Roam<span>r</span></a>
+  <ul>
+    <li class="hide-mobile"><a href="discover.html">Discover</a></li>
+    <li class="hide-mobile"><a href="trips.html" class="active">Trips</a></li>
+    <li class="hide-mobile"><a href="events.html">Events</a></li>
+    <li class="hide-mobile"><a href="live.html">Live</a></li>
+    <li><a href="#" class="nav-cta" onclick="event.preventDefault();openSignup()">Join Free</a></li>
+  </ul>
+</nav>
+
+<div class="page-header">
+  <div>
+    <div class="section-label">Community Trips</div>
+    <h1 style="font-family:'Bebas Neue',sans-serif;font-size:clamp(2.5rem,5vw,4rem);line-height:1">Open Trips</h1>
+    <p class="text-muted mt-1">Browse upcoming trips and request to join — or post your own.</p>
+    <div class="filters">
+      <button class="filter-btn active" onclick="setFilter('all',this)">All</button>
+      <button class="filter-btn" onclick="setFilter('Adventure',this)">🥾 Adventure</button>
+      <button class="filter-btn" onclick="setFilter('Digital Nomad',this)">✈️ Nomad</button>
+      <button class="filter-btn" onclick="setFilter('Culture & Art',this)">🏛 Culture</button>
+      <button class="filter-btn" onclick="setFilter('Foodie',this)">🍜 Foodie</button>
+    </div>
+  </div>
+  <button class="btn btn-primary" onclick="document.getElementById('post-modal').classList.add('open')">+ Post a Trip</button>
+</div>
+
+<div class="trips-grid" id="trips-grid"></div>
+
+<footer>
+  <div><div class="footer-logo">Roam<span>r</span></div><p>© 2026 Roamr Inc.</p></div>
+  <div class="footer-links"><a href="index.html">Home</a><a href="discover.html">Discover</a><a href="events.html">Events</a></div>
+</footer>
+
+<!-- POST TRIP MODAL -->
+<div id="post-modal" class="modal-overlay" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="modal-box" style="max-width:520px">
+    <button class="modal-close" onclick="document.getElementById('post-modal').classList.remove('open')">×</button>
+    <div class="section-label">Share Your Plans</div>
+    <h3 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;margin-bottom:1.5rem">Post a Trip</h3>
+    <div class="flex flex-col gap-2">
+      <div class="field" style="position:relative">
+        <label>Destination</label>
+        <div style="position:relative">
+          <input id="t-dest" type="text" autocomplete="off" placeholder="e.g. Bali, Indonesia">
+          <span id="t-dest-spin" style="display:none;position:absolute;right:0.85rem;top:50%;transform:translateY(-50%);font-size:0.75rem;color:var(--muted)">Searching…</span>
+        </div>
+        <div id="t-dest-dd" style="display:none;position:absolute;left:0;right:0;top:100%;background:#1a1a14;border:1px solid var(--border2);border-top:none;border-radius:0 0 6px 6px;z-index:9999;max-height:200px;overflow-y:auto"></div>
+      </div>
+      <div class="post-grid">
+        <div class="field"><label>Start Date</label><input id="t-start" type="date"></div>
+        <div class="field"><label>End Date</label><input id="t-end" type="date"></div>
+      </div>
+      <div class="field">
+        <label>Travel Style</label>
+        <select id="t-style">
+          <option>Backpacker</option><option>Digital Nomad</option><option>Adventure</option>
+          <option>Foodie</option><option>Culture & Art</option><option>Beach & Relax</option><option>Eco Travel</option>
+        </select>
+      </div>
+      <div class="field"><label>Open Spots</label><input id="t-spots" type="number" min="1" max="10" value="2" placeholder="2"></div>
+      <div class="field"><label>Description</label><textarea id="t-desc" placeholder="Tell potential companions what you're planning, what kind of person you're looking for, and any requirements…"></textarea></div>
+      <div id="t-err" style="font-size:0.8rem;color:var(--accent);display:none"></div>
+      <button class="btn btn-primary w-full" style="margin-top:0.25rem" onclick="submitTrip()">Post Trip ✈️</button>
+    </div>
+  </div>
+</div>
+
+<!-- SUCCESS TOAST -->
+<div id="toast" style="display:none;position:fixed;bottom:2rem;right:2rem;background:#2bb57d;color:#fff;padding:1rem 1.5rem;border-radius:6px;font-weight:600;font-size:0.9rem;z-index:300;animation:fadeUp 0.3s ease">✅ Trip posted! Travelers will be notified.</div>
+
+<script src="shared.js"></script>
+<script src="signup-modal.js"></script>
+<script>
+renderSignupModal();
+let activeFilter = 'all';
+
+function renderTrips(trips) {
+  const grid = document.getElementById('trips-grid');
+  if (!trips.length) { grid.innerHTML = '<p class="text-muted" style="padding:2rem">No trips match your filters.</p>'; return; }
+  grid.innerHTML = trips.map(tr => `
+    <div class="trip-card">
+      <div class="trip-dest">${tr.destination}</div>
+      <div class="trip-dates">📅 ${tr.dates} · <span class="urgency">${tr.daysLeft < 7 ? '🔥 Leaving soon!' : tr.daysLeft + ' days away'}</span></div>
+      <p class="trip-desc">${tr.desc}</p>
+      <div class="trip-tags">${tr.tags.map(t=>`<span class="trip-tag">${t}</span>`).join('')}</div>
+      <div class="trip-footer">
+        <div class="trip-host">
+          <div class="avatar avatar-sm" style="background:${tr.color}20;color:${tr.color}">${tr.initials}</div>
+          <div>
+            <div style="font-size:0.85rem;font-weight:600">${tr.traveler}</div>
+            <div style="font-size:0.75rem;color:var(--muted)">${tr.spots} spot${tr.spots>1?'s':''} open · ${tr.style}</div>
+          </div>
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="openSignup()">Request to Join</button>
+      </div>
+    </div>`).join('');
+}
+
+function setFilter(style, btn) {
+  activeFilter = style;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const filtered = style === 'all' ? TRIPS : TRIPS.filter(t => t.style === style || t.tags.includes(style));
+  renderTrips(filtered);
+}
+
+function submitTrip() {
+  const dest = document.getElementById('t-dest').value.trim();
+  const start = document.getElementById('t-start').value;
+  const end = document.getElementById('t-end').value;
+  const desc = document.getElementById('t-desc').value.trim();
+  const err = document.getElementById('t-err');
+  if (!dest || !start || !end || !desc) { err.textContent='Please fill in all fields.'; err.style.display='block'; return; }
+  err.style.display='none';
+  document.getElementById('post-modal').classList.remove('open');
+  const toast = document.getElementById('toast');
+  toast.style.display='block';
+  setTimeout(() => toast.style.display='none', 3500);
+}
+
+renderTrips(TRIPS);
+setTimeout(() => initCityAutocomplete('t-dest','t-dest-dd','t-dest-spin'), 100);
+</script>
+</body>
+</html>

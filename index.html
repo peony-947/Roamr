@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Roamr — Travel Together</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Instrument+Sans:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared.css">
+<style>
+.hero { min-height: 100vh; display: grid; grid-template-columns: 1fr 1fr; align-items: center; padding: 8rem 3rem 4rem; gap: 4rem; position: relative; overflow: hidden; }
+.hero::before { content:''; position:absolute; inset:0; background:radial-gradient(ellipse at 70% 50%, rgba(232,76,43,0.12) 0%, transparent 60%); pointer-events:none; }
+.hero-eyebrow { font-size:0.75rem; font-weight:600; letter-spacing:0.2em; text-transform:uppercase; color:var(--accent); margin-bottom:1.25rem; display:flex; align-items:center; gap:0.75rem; }
+.hero-eyebrow::before { content:''; display:block; width:2rem; height:1px; background:var(--accent); }
+h1 { font-family:'Bebas Neue',sans-serif; font-size:clamp(4rem,8vw,7.5rem); line-height:0.95; letter-spacing:0.02em; margin-bottom:1.5rem; }
+h1 em { font-style:italic; color:var(--accent); }
+.hero-sub { font-size:1.125rem; color:var(--muted); max-width:36ch; margin-bottom:2.5rem; line-height:1.7; }
+.hero-visual { position:relative; height:520px; display:flex; align-items:center; justify-content:center; }
+.tc { position:absolute; background:var(--card-bg); border:1px solid var(--border); border-radius:12px; padding:1.25rem; width:240px; transition:transform 0.3s; }
+.tc:hover { transform:translateY(-4px) !important; }
+.tc-1 { top:30px; left:0; transform:rotate(-4deg); z-index:1; }
+.tc-2 { top:100px; left:80px; transform:rotate(2deg); z-index:3; }
+.tc-3 { top:60px; right:0; transform:rotate(6deg); z-index:2; }
+.tc-av { width:48px; height:48px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:600; font-size:1.1rem; margin-bottom:0.75rem; }
+.tc-name { font-weight:600; font-size:0.95rem; }
+.tc-loc { font-size:0.78rem; color:var(--muted); margin-bottom:0.75rem; }
+.tc-tags { display:flex; flex-wrap:wrap; gap:0.35rem; }
+.tc-tag { font-size:0.7rem; font-weight:600; letter-spacing:0.04em; padding:0.2rem 0.55rem; border-radius:2px; background:rgba(255,255,255,0.06); color:var(--muted); text-transform:uppercase; }
+.match-badge { position:absolute; top:-10px; right:12px; background:var(--accent2); color:var(--black); font-size:0.7rem; font-weight:600; letter-spacing:0.05em; padding:0.25rem 0.6rem; border-radius:2px; text-transform:uppercase; }
+.connect-btn { margin-top:0.85rem; width:100%; background:rgba(232,76,43,0.15); border:1px solid rgba(232,76,43,0.3); color:var(--accent); border-radius:4px; padding:0.45rem; font-size:0.78rem; font-weight:600; letter-spacing:0.05em; text-transform:uppercase; cursor:pointer; transition:background 0.2s; font-family:'Instrument Sans',sans-serif; }
+.connect-btn:hover { background:rgba(232,76,43,0.25); }
+.stats-strip { position:absolute; bottom:0; left:0; right:0; display:flex; gap:1.5rem; padding:0 1rem; }
+.stat-num { font-family:'Bebas Neue',sans-serif; font-size:2rem; color:var(--white); }
+.stat-lbl { font-size:0.72rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.1em; }
+.steps { display:grid; grid-template-columns:repeat(3,1fr); gap:2px; border:1px solid var(--border); border-radius:4px; overflow:hidden; }
+.step { padding:2.5rem 2rem; background:var(--card-bg); border-right:1px solid var(--border); position:relative; overflow:hidden; transition:background 0.2s; }
+.step:last-child { border-right:none; } .step:hover { background:var(--card-bg2); }
+.step-num { font-family:'Bebas Neue',sans-serif; font-size:5rem; line-height:1; color:rgba(255,255,255,0.05); position:absolute; top:1rem; right:1.5rem; }
+.step-icon { font-size:1.75rem; margin-bottom:1.25rem; display:block; }
+.step h3 { font-weight:600; font-size:1.1rem; margin-bottom:0.75rem; }
+.step p { font-size:0.9rem; color:var(--muted); line-height:1.65; }
+.features-grid { display:grid; grid-template-columns:1fr 1fr; gap:1px; border:1px solid var(--border); border-radius:4px; overflow:hidden; }
+.feat { padding:2.5rem; background:var(--card-bg); border-right:1px solid var(--border); border-bottom:1px solid var(--border); transition:background 0.2s; }
+.feat:hover { background:var(--card-bg2); }
+.feat-icon { font-size:2rem; width:52px; height:52px; background:rgba(232,76,43,0.1); border-radius:4px; display:flex; align-items:center; justify-content:center; border:1px solid rgba(232,76,43,0.2); margin-bottom:1.5rem; }
+.feat h3 { font-weight:600; font-size:1.05rem; margin-bottom:0.65rem; }
+.feat p { font-size:0.875rem; color:var(--muted); line-height:1.65; }
+.testi-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:1.5rem; }
+.testi { background:var(--card-bg); border:1px solid var(--border); border-radius:8px; padding:2rem; }
+.testi-q { font-size:1.5rem; color:var(--accent); font-weight:600; line-height:1; margin-bottom:0.75rem; }
+.testi-text { font-size:0.9rem; color:var(--muted); line-height:1.7; margin-bottom:1.5rem; }
+.cta-section { background:var(--accent); text-align:center; padding:7rem 3rem; position:relative; overflow:hidden; }
+.cta-section::before { content:'ROAMR'; font-family:'Bebas Neue',sans-serif; font-size:18vw; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); color:rgba(0,0,0,0.1); white-space:nowrap; pointer-events:none; }
+.cta-section h2 { color:var(--white); font-family:'Bebas Neue',sans-serif; font-size:clamp(2.5rem,5vw,4rem); margin-bottom:1rem; position:relative; }
+.cta-section p { color:rgba(255,255,255,0.78); margin-bottom:2.5rem; font-size:1.1rem; position:relative; max-width:44ch; margin-inline:auto; margin-bottom:2.5rem; }
+.btn-dark { background:var(--black); color:var(--white); padding:1rem 2.5rem; border-radius:2px; font-weight:600; font-size:0.9rem; letter-spacing:0.06em; text-transform:uppercase; border:none; cursor:pointer; transition:all 0.2s; font-family:'Instrument Sans',sans-serif; display:inline-block; position:relative; }
+.btn-dark:hover { background:#1a1a1a; transform:translateY(-2px); }
+@keyframes fadeUp { from{opacity:0;transform:translateY(30px)} to{opacity:1;transform:translateY(0)} }
+.hero-content > * { animation:fadeUp 0.7s ease both; }
+.hero-content > *:nth-child(1){animation-delay:0.1s} .hero-content > *:nth-child(2){animation-delay:0.2s} .hero-content > *:nth-child(3){animation-delay:0.35s} .hero-content > *:nth-child(4){animation-delay:0.45s}
+.hero-visual { animation:fadeUp 0.9s 0.3s ease both; }
+@media(max-width:900px){.hero{grid-template-columns:1fr;padding:6rem 1.5rem 4rem;gap:3rem}.hero-visual{height:360px}.tc-3{display:none}.steps{grid-template-columns:1fr}.step{border-right:none;border-bottom:1px solid var(--border)}.features-grid{grid-template-columns:1fr}.testi-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<nav>
+  <a href="index.html" class="logo">Roam<span>r</span></a>
+  <ul>
+    <li class="hide-mobile"><a href="discover.html">Discover</a></li>
+    <li class="hide-mobile"><a href="trips.html">Trips</a></li>
+    <li class="hide-mobile"><a href="events.html">Events</a></li>
+    <li class="hide-mobile"><a href="live.html">Live Map</a></li>
+    <li><a href="#" class="nav-cta" onclick="event.preventDefault();openSignup()">Join Free</a></li>
+  </ul>
+</nav>
+
+<section class="hero">
+  <div class="hero-content">
+    <div class="hero-eyebrow">Connect While You Explore</div>
+    <h1>Don't<br>Travel<br><em>Alone.</em></h1>
+    <p class="hero-sub">Roamr matches you with travelers who share your destination, timeline, and vibe — so every trip becomes a story worth telling.</p>
+    <div class="flex gap-2" style="flex-wrap:wrap;">
+      <button class="btn btn-primary" onclick="openSignup()">Start Your Journey</button>
+      <a href="discover.html" class="btn btn-ghost">Browse Travelers →</a>
+    </div>
+  </div>
+  <div class="hero-visual">
+    <div class="tc tc-1">
+      <div class="tc-av" style="background:#e84c2b">SR</div>
+      <div class="tc-name">Sofia R.</div>
+      <div class="tc-loc">📍 Lisbon → Bali</div>
+      <div class="tc-tags"><span class="tc-tag">Surfing</span><span class="tc-tag">Food</span><span class="tc-tag">Solo</span></div>
+      <button class="connect-btn" onclick="openSignup()">Connect</button>
+    </div>
+    <div class="tc tc-2">
+      <span class="match-badge">95% Match</span>
+      <div class="flex gap-2 items-center">
+        <div class="tc-av" style="background:#2b7de8">MK</div>
+        <div><div class="tc-name">Marco K.</div><div class="tc-loc">📍 Berlin → Bali</div></div>
+      </div>
+      <div class="tc-tags" style="margin-top:0.75rem"><span class="tc-tag">Diving</span><span class="tc-tag">Hiking</span><span class="tc-tag">Nomad</span></div>
+      <button class="connect-btn" onclick="openSignup()">Connect</button>
+    </div>
+    <div class="tc tc-3">
+      <div class="tc-av" style="background:#2bb57d">AL</div>
+      <div class="tc-name">Aisha L.</div>
+      <div class="tc-loc">📍 NYC → Bali</div>
+      <div class="tc-tags"><span class="tc-tag">Yoga</span><span class="tc-tag">Culture</span></div>
+      <button class="connect-btn" onclick="openSignup()">Connect</button>
+    </div>
+    <div class="stats-strip">
+      <div><div class="stat-num">84K</div><div class="stat-lbl">Travelers</div></div>
+      <div><div class="stat-num">190+</div><div class="stat-lbl">Countries</div></div>
+      <div><div class="stat-num">12K</div><div class="stat-lbl">Connections/mo</div></div>
+    </div>
+  </div>
+</section>
+
+<div class="ticker"><div class="ticker-inner">
+  <span>🌏 Bali</span><span class="hl">·</span><span>🗼 Tokyo</span><span class="hl">·</span><span>🏔 Patagonia</span><span class="hl">·</span><span>🌍 Nairobi</span><span class="hl">·</span><span>🏛 Athens</span><span class="hl">·</span><span>🌊 Maldives</span><span class="hl">·</span><span>🏙 New York</span><span class="hl">·</span><span>🌮 Mexico City</span><span class="hl">·</span><span>🫒 Marrakech</span><span class="hl">·</span><span>🌅 Santorini</span><span class="hl">·</span>
+  <span>🌏 Bali</span><span class="hl">·</span><span>🗼 Tokyo</span><span class="hl">·</span><span>🏔 Patagonia</span><span class="hl">·</span><span>🌍 Nairobi</span><span class="hl">·</span><span>🏛 Athens</span><span class="hl">·</span><span>🌊 Maldives</span><span class="hl">·</span><span>🏙 New York</span><span class="hl">·</span><span>🌮 Mexico City</span><span class="hl">·</span><span>🫒 Marrakech</span><span class="hl">·</span><span>🌅 Santorini</span><span class="hl">·</span>
+</div></div>
+
+<section class="section" id="how">
+  <div class="section-label">How it works</div>
+  <h2 class="display">Three Steps<br>to Your Crew</h2>
+  <p class="section-sub mb-4">No awkward mixers. Just your next great travel friendship, one match away.</p>
+  <div class="steps">
+    <div class="step"><span class="step-num">01</span><span class="step-icon">🗺️</span><h3>Set Your Destination</h3><p>Tell us where you're headed and when. We'll find others with overlapping plans.</p></div>
+    <div class="step"><span class="step-num">02</span><span class="step-icon">🎯</span><h3>Match by Vibe</h3><p>Our engine factors travel style, interests, pace, and personality — not just geography.</p></div>
+    <div class="step"><span class="step-num">03</span><span class="step-icon">✈️</span><h3>Connect & Go</h3><p>Chat, plan an activity, or travel together. Every connection is on your terms, always safe.</p></div>
+  </div>
+</section>
+
+<section class="section" style="background:#0d0d09" id="features">
+  <div class="section-label">Features</div>
+  <h2 class="display">Built for<br>Real Travelers</h2>
+  <p class="section-sub mb-4">Everything you need to meet the right people — nothing you don't.</p>
+  <div class="features-grid">
+    <div class="feat"><div class="feat-icon">🛡️</div><h3>Verified Profiles</h3><p>Every traveler is ID-verified. Reviews from past companions build a trust score.</p></div>
+    <div class="feat"><div class="feat-icon">📍</div><h3>Live City Mode</h3><p>See other Roamr travelers nearby right now — perfect for impromptu dinners or day trips.</p></div>
+    <div class="feat"><div class="feat-icon">🗓️</div><h3>Itinerary Overlap</h3><p>Sync your travel dates and see where your plans intersect with potential connections.</p></div>
+    <div class="feat"><div class="feat-icon">💬</div><h3>Encrypted Messaging</h3><p>End-to-end encrypted chat keeps conversations private until you're ready to share more.</p></div>
+    <div class="feat"><div class="feat-icon">🌐</div><h3>Group Adventures</h3><p>Join open group events — hikes, food tours, language exchanges, and more.</p></div>
+    <div class="feat"><div class="feat-icon">⚡</div><h3>Instant Alerts</h3><p>Get notified when someone with strong compatibility announces a trip to your destination.</p></div>
+  </div>
+</section>
+
+<section class="section" id="stories">
+  <div class="section-label">Traveler Stories</div>
+  <h2 class="display">Real Connections,<br>Real Adventures</h2>
+  <p class="section-sub mb-4">From hiking partners to lifelong friends.</p>
+  <div class="testi-grid">
+    <div class="testi"><div class="testi-q">"</div><p class="testi-text">I was dreading solo travel in Vietnam but Roamr matched me with two other solo women. We ended up spending 10 days together — now they're my best friends.</p><div class="flex items-center gap-2"><div class="avatar avatar-sm" style="background:rgba(232,76,43,0.15);color:var(--accent)">JL</div><div><div class="text-sm" style="font-weight:600">Jade L.</div><div class="text-xs text-muted">London → Hanoi</div></div></div></div>
+    <div class="testi"><div class="testi-q">"</div><p class="testi-text">As a remote worker, I found Roamr invaluable in Lisbon. The co-working community I met turned a lonely month into one of the best of my career.</p><div class="flex items-center gap-2"><div class="avatar avatar-sm" style="background:rgba(43,125,232,0.15);color:#5b9cf6">DM</div><div><div class="text-sm" style="font-weight:600">Daniel M.</div><div class="text-xs text-muted">Toronto → Lisbon</div></div></div></div>
+    <div class="testi"><div class="testi-q">"</div><p class="testi-text">The group event feature in Tokyo was incredible. I showed up knowing nobody — left with seven new contacts and plans to meet in Seoul next month.</p><div class="flex items-center gap-2"><div class="avatar avatar-sm" style="background:rgba(43,181,125,0.15);color:#2bb57d">PK</div><div><div class="text-sm" style="font-weight:600">Priya K.</div><div class="text-xs text-muted">Sydney → Tokyo</div></div></div></div>
+  </div>
+</section>
+
+<section class="cta-section" id="join">
+  <h2>Your Next Story<br>Starts Here</h2>
+  <p>Join 84,000+ travelers already connecting on Roamr. It's free to get started.</p>
+  <button class="btn-dark" onclick="openSignup()">Create Your Free Profile</button>
+</section>
+
+<footer>
+  <div><div class="footer-logo">Roam<span>r</span></div><p style="margin-top:0.5rem">© 2026 Roamr Inc. All rights reserved.</p></div>
+  <div class="footer-links"><a href="discover.html">Discover</a><a href="trips.html">Trips</a><a href="events.html">Events</a><a href="live.html">Live</a><a href="#">Safety</a><a href="#">Privacy</a></div>
+</footer>
+
+<script src="shared.js"></script>
+<script src="signup-modal.js"></script>
+<script>renderSignupModal();</script>
+</body>
+</html>

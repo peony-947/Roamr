@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Profile — Roamr</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Instrument+Sans:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared.css">
+<style>
+.profile-hero { padding: 6.5rem 3rem 3rem; display: grid; grid-template-columns: auto 1fr auto; gap: 2.5rem; align-items: start; border-bottom: 1px solid var(--border); }
+.avatar-xl { width: 100px; height: 100px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 2rem; flex-shrink: 0; }
+.profile-name { font-family: 'Bebas Neue', sans-serif; font-size: clamp(2.5rem,5vw,3.5rem); line-height: 1; margin-bottom: 0.4rem; }
+.profile-meta { display: flex; flex-wrap: wrap; gap: 1rem; margin: 0.75rem 0; }
+.profile-meta-item { display: flex; align-items: center; gap: 0.4rem; font-size: 0.85rem; color: var(--muted); }
+.profile-tags { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1rem; }
+.profile-actions { display: flex; flex-direction: column; gap: 0.75rem; min-width: 180px; }
+.profile-body { display: grid; grid-template-columns: 1fr 340px; gap: 2rem; padding: 2.5rem 3rem; }
+.section-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px; padding: 1.75rem; margin-bottom: 1.5rem; }
+.section-card h3 { font-weight: 600; font-size: 1rem; margin-bottom: 1.25rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--border); }
+.trip-pill { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem; border-radius: 6px; background: rgba(255,255,255,0.03); border: 1px solid var(--border); margin-bottom: 0.5rem; font-size: 0.875rem; }
+.trip-pill:last-child { margin-bottom: 0; }
+.review-item { padding: 1.25rem 0; border-bottom: 1px solid var(--border); }
+.review-item:last-child { border-bottom: none; padding-bottom: 0; }
+.review-header { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.6rem; }
+.review-text { font-size: 0.875rem; color: var(--muted); line-height: 1.65; }
+.review-meta { font-size: 0.75rem; color: var(--muted); margin-top: 0.4rem; }
+.stat-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--border); border-radius: 8px; overflow: hidden; margin-bottom: 1rem; }
+.stat-cell { background: var(--card-bg2); padding: 1rem; text-align: center; }
+.stat-big { font-family: 'Bebas Neue', sans-serif; font-size: 2rem; line-height: 1; }
+.stat-label { font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin-top: 0.2rem; }
+.report-btn { background: none; border: none; color: var(--muted); font-size: 0.75rem; cursor: pointer; font-family: 'Instrument Sans', sans-serif; text-decoration: underline; padding: 0; }
+.report-btn:hover { color: var(--accent); }
+@media(max-width:900px){ .profile-hero{grid-template-columns:1fr;padding:5.5rem 1.5rem 2rem} .profile-actions{flex-direction:row} .profile-body{grid-template-columns:1fr;padding:1.5rem} }
+</style>
+</head>
+<body>
+<nav>
+  <a href="index.html" class="logo">Roam<span>r</span></a>
+  <ul>
+    <li class="hide-mobile"><a href="discover.html">Discover</a></li>
+    <li class="hide-mobile"><a href="trips.html">Trips</a></li>
+    <li class="hide-mobile"><a href="events.html">Events</a></li>
+    <li class="hide-mobile"><a href="live.html">Live</a></li>
+    <li><a href="#" class="nav-cta" onclick="event.preventDefault();openSignup()">Join Free</a></li>
+  </ul>
+</nav>
+
+<div id="profile-root"></div>
+
+<footer>
+  <div><div class="footer-logo">Roam<span>r</span></div><p>© 2026 Roamr Inc.</p></div>
+  <div class="footer-links"><a href="index.html">Home</a><a href="discover.html">Discover</a><a href="trips.html">Trips</a></div>
+</footer>
+
+<script src="shared.js"></script>
+<script src="signup-modal.js"></script>
+<script>
+renderSignupModal();
+
+const id = parseInt(getParam('id')) || 2;
+const t = TRAVELERS.find(x => x.id === id) || TRAVELERS[1];
+
+document.title = `${t.name} — Roamr`;
+
+const myTrips = TRIPS.filter(tr => tr.travelerId === t.id);
+const myReviews = t.id === 2 ? REVIEWS : REVIEWS.slice(0,1);
+
+document.getElementById('profile-root').innerHTML = `
+  <div class="profile-hero">
+    <div class="avatar-xl" style="background:${t.color}20;color:${t.color}">${t.initials}</div>
+    <div>
+      <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap">
+        <div class="profile-name">${t.name}</div>
+        ${t.verified ? '<span class="badge badge-blue">✓ Verified</span>' : ''}
+        ${t.pro ? '<span class="badge badge-gold">⭐ Pro</span>' : ''}
+        ${t.online ? '<span class="badge badge-green">● Online now</span>' : ''}
+      </div>
+      <div class="profile-meta">
+        <span class="profile-meta-item">📍 ${t.city}, ${t.country}</span>
+        <span class="profile-meta-item">★ ${t.rating} · ${t.reviews} reviews</span>
+        <span class="profile-meta-item">✈️ ${t.trips.length} trips logged</span>
+      </div>
+      <p style="color:var(--muted);font-size:0.95rem;max-width:55ch;line-height:1.7">${t.bio}</p>
+      <div class="profile-tags">${t.tags.map(tag => `<span class="badge badge-muted">${tag}</span>`).join('')}</div>
+    </div>
+    <div class="profile-actions">
+      <button class="btn btn-primary" onclick="openSignup()">💬 Send Message</button>
+      <button class="btn btn-ghost" onclick="openSignup()">Connect</button>
+      <button class="report-btn" onclick="openSignup()">Report / Block</button>
+    </div>
+  </div>
+
+  <div class="profile-body">
+    <div>
+      <div class="section-card">
+        <h3>📅 Upcoming Trips</h3>
+        ${myTrips.length ? myTrips.map(tr => `
+          <div class="trip-pill">
+            <span style="font-size:1.2rem">✈️</span>
+            <div style="flex:1">
+              <div style="font-weight:600">${tr.destination}</div>
+              <div style="font-size:0.78rem;color:var(--muted)">${tr.dates}</div>
+            </div>
+            <span class="badge badge-accent">${tr.spots} spot${tr.spots>1?'s':''} open</span>
+          </div>`).join('') : '<p class="text-muted text-sm">No upcoming trips posted yet.</p>'}
+        <button class="btn btn-ghost btn-sm" style="margin-top:1rem;width:100%" onclick="window.location='trips.html'">View All Trips</button>
+      </div>
+
+      <div class="section-card">
+        <h3>⭐ Reviews (${myReviews.length})</h3>
+        ${myReviews.map(r => `
+          <div class="review-item">
+            <div class="review-header">
+              <div class="avatar avatar-sm" style="background:${r.color}20;color:${r.color}">${r.initials}</div>
+              <div>
+                <div style="font-weight:600;font-size:0.875rem">${r.reviewer}</div>
+                <div class="stars" style="font-size:0.75rem">${renderStars(r.rating)}</div>
+              </div>
+            </div>
+            <p class="review-text">${r.text}</p>
+            <div class="review-meta">📍 ${r.trip} · ${r.date}</div>
+          </div>`).join('')}
+        <button class="btn btn-ghost btn-sm" style="margin-top:1.25rem;width:100%" onclick="openSignup()">Leave a Review</button>
+      </div>
+    </div>
+
+    <div>
+      <div class="section-card">
+        <h3>📊 Stats</h3>
+        <div class="stat-row">
+          <div class="stat-cell"><div class="stat-big">${t.rating}</div><div class="stat-label">Rating</div></div>
+          <div class="stat-cell"><div class="stat-big">${t.reviews}</div><div class="stat-label">Reviews</div></div>
+          <div class="stat-cell"><div class="stat-big">${t.trips.length}</div><div class="stat-label">Trips</div></div>
+          <div class="stat-cell"><div class="stat-big">${myTrips.length}</div><div class="stat-label">Open Trips</div></div>
+        </div>
+      </div>
+
+      <div class="section-card">
+        <h3>🌍 Past Destinations</h3>
+        ${t.trips.map(dest => `
+          <div class="trip-pill">
+            <span style="font-size:1.1rem">📍</span>
+            <span style="font-size:0.875rem">${dest}</span>
+          </div>`).join('')}
+      </div>
+
+      <div class="section-card">
+        <h3>🔗 Connect</h3>
+        <p class="text-sm text-muted" style="margin-bottom:1rem">Sign up to send ${t.name.split(' ')[0]} a message or request to join their next trip.</p>
+        <button class="btn btn-primary w-full" onclick="openSignup()">Create Free Account</button>
+      </div>
+    </div>
+  </div>
+`;
+</script>
+</body>
+</html>

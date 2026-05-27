@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Discover Travelers — Roamr</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Instrument+Sans:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared.css">
+<style>
+.page-header { padding: 6.5rem 3rem 2rem; border-bottom: 1px solid var(--border); }
+.filters { display: flex; gap: 0.75rem; flex-wrap: wrap; margin-top: 1.5rem; }
+.filter-btn { padding: 0.45rem 1rem; border-radius: 2px; border: 1px solid var(--border2); background: transparent; color: var(--muted); font-size: 0.78rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; cursor: pointer; transition: all 0.15s; font-family: 'Instrument Sans', sans-serif; }
+.filter-btn:hover, .filter-btn.active { background: rgba(232,76,43,0.12); border-color: rgba(232,76,43,0.35); color: var(--accent); }
+.filter-input { padding: 0.45rem 1rem; border-radius: 2px; border: 1px solid var(--border2); background: var(--card-bg); color: var(--white); font-size: 0.85rem; outline: none; font-family: 'Instrument Sans', sans-serif; min-width: 180px; }
+.filter-input:focus { border-color: rgba(232,76,43,0.4); }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.25rem; padding: 2.5rem 3rem; }
+.traveler-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px; padding: 1.5rem; transition: all 0.2s; cursor: pointer; position: relative; }
+.traveler-card:hover { border-color: var(--border2); transform: translateY(-2px); }
+.tc-header { display: flex; align-items: flex-start; gap: 1rem; margin-bottom: 1rem; }
+.tc-meta { flex: 1; }
+.tc-name { font-weight: 600; font-size: 1rem; margin-bottom: 0.2rem; }
+.tc-location { font-size: 0.8rem; color: var(--muted); }
+.tc-bio { font-size: 0.85rem; color: var(--muted); line-height: 1.6; margin-bottom: 1rem; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.tc-tags { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-bottom: 1rem; }
+.tc-tag { font-size: 0.7rem; font-weight: 600; letter-spacing: 0.04em; padding: 0.2rem 0.55rem; border-radius: 2px; background: rgba(255,255,255,0.05); color: var(--muted); text-transform: uppercase; }
+.tc-footer { display: flex; align-items: center; justify-content: space-between; padding-top: 1rem; border-top: 1px solid var(--border); }
+.tc-rating { font-size: 0.8rem; color: var(--accent2); }
+.tc-reviews { font-size: 0.75rem; color: var(--muted); margin-left: 0.35rem; }
+.online-dot { width: 8px; height: 8px; border-radius: 50%; background: #2bb57d; display: inline-block; margin-right: 0.3rem; }
+.verified-icon { font-size: 0.75rem; color: #5b9cf6; }
+.pro-badge { position: absolute; top: 1rem; right: 1rem; }
+@media(max-width:900px){.grid{padding:1.5rem;grid-template-columns:1fr}.page-header{padding:5.5rem 1.5rem 1.5rem}}
+</style>
+</head>
+<body>
+<nav>
+  <a href="index.html" class="logo">Roam<span>r</span></a>
+  <ul>
+    <li class="hide-mobile"><a href="discover.html" class="active">Discover</a></li>
+    <li class="hide-mobile"><a href="trips.html">Trips</a></li>
+    <li class="hide-mobile"><a href="events.html">Events</a></li>
+    <li class="hide-mobile"><a href="live.html">Live</a></li>
+    <li><a href="#" class="nav-cta" onclick="event.preventDefault();openSignup()">Join Free</a></li>
+  </ul>
+</nav>
+
+<div class="page-header">
+  <div class="section-label">Community</div>
+  <h1 style="font-family:'Bebas Neue',sans-serif;font-size:clamp(2.5rem,5vw,4rem);line-height:1">Discover Travelers</h1>
+  <p class="text-muted mt-1">Find your next travel companion — filter by destination, style, or interest.</p>
+  <div class="filters">
+    <input class="filter-input" id="search-input" placeholder="🔍  Search by name or city…" oninput="filterCards()">
+    <button class="filter-btn active" onclick="setStyleFilter('all',this)">All</button>
+    <button class="filter-btn" onclick="setStyleFilter('Backpacker',this)">🎒 Backpacker</button>
+    <button class="filter-btn" onclick="setStyleFilter('Digital Nomad',this)">✈️ Nomad</button>
+    <button class="filter-btn" onclick="setStyleFilter('Adventure',this)">🥾 Adventure</button>
+    <button class="filter-btn" onclick="setStyleFilter('Foodie',this)">🍜 Foodie</button>
+    <button class="filter-btn" onclick="setStyleFilter('Eco Travel',this)">🌿 Eco</button>
+    <button class="filter-btn" onclick="setVerifiedFilter(this)">✅ Verified Only</button>
+  </div>
+</div>
+
+<div class="grid" id="traveler-grid"></div>
+
+<footer>
+  <div><div class="footer-logo">Roam<span>r</span></div><p>© 2026 Roamr Inc.</p></div>
+  <div class="footer-links"><a href="index.html">Home</a><a href="trips.html">Trips</a><a href="events.html">Events</a><a href="live.html">Live</a></div>
+</footer>
+
+<script src="shared.js"></script>
+<script src="signup-modal.js"></script>
+<script>
+renderSignupModal();
+let activeStyle = 'all', verifiedOnly = false;
+
+function renderCards(travelers) {
+  const grid = document.getElementById('traveler-grid');
+  if (!travelers.length) { grid.innerHTML = '<p class="text-muted" style="padding:2rem">No travelers match your filters.</p>'; return; }
+  grid.innerHTML = travelers.map(t => `
+    <div class="traveler-card" onclick="window.location='profile.html?id=${t.id}'">
+      ${t.pro ? '<span class="badge badge-gold pro-badge">Pro</span>' : ''}
+      <div class="tc-header">
+        <div class="avatar avatar-md" style="background:${t.color}20;color:${t.color}">${t.initials}</div>
+        <div class="tc-meta">
+          <div class="tc-name">${t.name} ${t.verified ? '<span class="verified-icon">✓</span>' : ''}</div>
+          <div class="tc-location">${t.online ? '<span class="online-dot"></span>' : ''}${t.city}, ${t.country}</div>
+        </div>
+      </div>
+      <p class="tc-bio">${t.bio}</p>
+      <div class="tc-tags">${t.tags.map(tag => `<span class="tc-tag">${tag}</span>`).join('')}</div>
+      <div class="tc-footer">
+        <div><span class="tc-rating">★ ${t.rating}</span><span class="tc-reviews">(${t.reviews} reviews)</span></div>
+        <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();openSignup()">Connect</button>
+      </div>
+    </div>`).join('');
+}
+
+function filterCards() {
+  const q = document.getElementById('search-input').value.toLowerCase();
+  let result = TRAVELERS;
+  if (activeStyle !== 'all') result = result.filter(t => t.tags.includes(activeStyle));
+  if (verifiedOnly) result = result.filter(t => t.verified);
+  if (q) result = result.filter(t => t.name.toLowerCase().includes(q) || t.city.toLowerCase().includes(q) || t.country.toLowerCase().includes(q));
+  renderCards(result);
+}
+
+function setStyleFilter(style, btn) {
+  activeStyle = style;
+  document.querySelectorAll('.filter-btn').forEach(b => { if(b.textContent.includes('Verified')) return; b.classList.remove('active'); });
+  btn.classList.add('active');
+  filterCards();
+}
+
+function setVerifiedFilter(btn) {
+  verifiedOnly = !verifiedOnly;
+  btn.classList.toggle('active', verifiedOnly);
+  filterCards();
+}
+
+renderCards(TRAVELERS);
+</script>
+</body>
+</html>
