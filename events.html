@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Events — Roamr</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Instrument+Sans:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared.css">
+<style>
+.page-header { padding: 6.5rem 3rem 2rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 1.5rem; }
+.filters { display: flex; gap: 0.75rem; flex-wrap: wrap; margin-top: 1.25rem; }
+.filter-btn { padding: 0.45rem 1rem; border-radius: 2px; border: 1px solid var(--border2); background: transparent; color: var(--muted); font-size: 0.78rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; cursor: pointer; transition: all 0.15s; font-family: 'Instrument Sans', sans-serif; }
+.filter-btn:hover, .filter-btn.active { background: rgba(232,76,43,0.12); border-color: rgba(232,76,43,0.35); color: var(--accent); }
+.events-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.25rem; padding: 2.5rem 3rem; }
+.event-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px; padding: 1.75rem; transition: all 0.2s; }
+.event-card:hover { border-color: var(--border2); transform: translateY(-2px); }
+.event-city { font-size: 0.75rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.5rem; }
+.event-title { font-weight: 600; font-size: 1.1rem; margin-bottom: 0.75rem; line-height: 1.3; }
+.event-meta { display: flex; flex-direction: column; gap: 0.3rem; margin-bottom: 1.25rem; }
+.event-meta-row { display: flex; align-items: center; gap: 0.5rem; font-size: 0.83rem; color: var(--muted); }
+.attendee-bar { height: 4px; border-radius: 2px; background: rgba(255,255,255,0.08); margin-bottom: 0.4rem; overflow: hidden; }
+.attendee-fill { height: 100%; border-radius: 2px; background: var(--accent); transition: width 0.5s ease; }
+.attendee-label { font-size: 0.75rem; color: var(--muted); margin-bottom: 1.25rem; }
+.event-footer { display: flex; justify-content: space-between; align-items: center; padding-top: 1rem; border-top: 1px solid var(--border); }
+.cat-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 0.35rem; }
+@media(max-width:900px){.page-header{padding:5.5rem 1.5rem 1.5rem}.events-grid{padding:1.5rem;grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<nav>
+  <a href="index.html" class="logo">Roam<span>r</span></a>
+  <ul>
+    <li class="hide-mobile"><a href="discover.html">Discover</a></li>
+    <li class="hide-mobile"><a href="trips.html">Trips</a></li>
+    <li class="hide-mobile"><a href="events.html" class="active">Events</a></li>
+    <li class="hide-mobile"><a href="live.html">Live</a></li>
+    <li><a href="#" class="nav-cta" onclick="event.preventDefault();openSignup()">Join Free</a></li>
+  </ul>
+</nav>
+
+<div class="page-header">
+  <div>
+    <div class="section-label">Group Adventures</div>
+    <h1 style="font-family:'Bebas Neue',sans-serif;font-size:clamp(2.5rem,5vw,4rem);line-height:1">Events Board</h1>
+    <p class="text-muted mt-1">Join open meetups, tours, and adventures posted by travelers in your city.</p>
+    <div class="filters">
+      <button class="filter-btn active" onclick="setFilter('all',this)">All</button>
+      <button class="filter-btn" onclick="setFilter('Networking',this)">🤝 Networking</button>
+      <button class="filter-btn" onclick="setFilter('Food',this)">🍜 Food</button>
+      <button class="filter-btn" onclick="setFilter('Culture',this)">🏛 Culture</button>
+      <button class="filter-btn" onclick="setFilter('Fitness',this)">🏃 Fitness</button>
+      <button class="filter-btn" onclick="setFilter('Social',this)">💬 Social</button>
+      <button class="filter-btn" onclick="setFilter('Eco',this)">🌿 Eco</button>
+    </div>
+  </div>
+  <button class="btn btn-primary" onclick="document.getElementById('create-modal').classList.add('open')">+ Create Event</button>
+</div>
+
+<div class="events-grid" id="events-grid"></div>
+
+<footer>
+  <div><div class="footer-logo">Roam<span>r</span></div><p>© 2026 Roamr Inc.</p></div>
+  <div class="footer-links"><a href="index.html">Home</a><a href="trips.html">Trips</a><a href="discover.html">Discover</a></div>
+</footer>
+
+<!-- CREATE EVENT MODAL -->
+<div id="create-modal" class="modal-overlay" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="modal-box" style="max-width:500px">
+    <button class="modal-close" onclick="document.getElementById('create-modal').classList.remove('open')">×</button>
+    <div class="section-label">Open to All Travelers</div>
+    <h3 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;margin-bottom:1.5rem">Create an Event</h3>
+    <div class="flex flex-col gap-2">
+      <div class="field"><label>Event Title</label><input id="e-title" type="text" placeholder="e.g. Sunset Hike & Drinks"></div>
+      <div class="field" style="position:relative">
+        <label>City</label>
+        <div style="position:relative">
+          <input id="e-city" type="text" autocomplete="off" placeholder="e.g. Lisbon, Portugal">
+          <span id="e-city-spin" style="display:none;position:absolute;right:0.85rem;top:50%;transform:translateY(-50%);font-size:0.75rem;color:var(--muted)">Searching…</span>
+        </div>
+        <div id="e-city-dd" style="display:none;position:absolute;left:0;right:0;top:100%;background:#1a1a14;border:1px solid var(--border2);border-top:none;border-radius:0 0 6px 6px;z-index:9999;max-height:200px;overflow-y:auto"></div>
+      </div>
+      <div class="field"><label>Location / Venue</label><input id="e-venue" type="text" placeholder="e.g. Alfama District, near the viewpoint"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem">
+        <div class="field"><label>Date</label><input id="e-date" type="date"></div>
+        <div class="field"><label>Time</label><input id="e-time" type="time" value="18:00"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem">
+        <div class="field">
+          <label>Category</label>
+          <select id="e-cat">
+            <option>Networking</option><option>Food</option><option>Culture</option>
+            <option>Fitness</option><option>Social</option><option>Eco</option><option>Other</option>
+          </select>
+        </div>
+        <div class="field"><label>Max Attendees</label><input id="e-max" type="number" min="2" max="100" value="20"></div>
+      </div>
+      <div id="e-err" style="font-size:0.8rem;color:var(--accent);display:none"></div>
+      <button class="btn btn-primary w-full" style="margin-top:0.25rem" onclick="submitEvent()">Post Event 🎉</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" style="display:none;position:fixed;bottom:2rem;right:2rem;background:#2bb57d;color:#fff;padding:1rem 1.5rem;border-radius:6px;font-weight:600;font-size:0.9rem;z-index:300">🎉 Event posted! Nearby travelers will be notified.</div>
+
+<script src="shared.js"></script>
+<script src="signup-modal.js"></script>
+<script>
+renderSignupModal();
+const CAT_COLORS = { Networking:'#5b9cf6', Food:'#f5a623', Culture:'#a855f7', Fitness:'#2bb57d', Social:'#e84c2b', Eco:'#4ade80', Other:'#888078' };
+let activeFilter = 'all';
+
+function renderEvents(evts) {
+  const grid = document.getElementById('events-grid');
+  if (!evts.length) { grid.innerHTML='<p class="text-muted" style="padding:2rem">No events match your filter.</p>'; return; }
+  grid.innerHTML = evts.map(ev => {
+    const pct = Math.round((ev.attendees / ev.max) * 100);
+    const col = CAT_COLORS[ev.category] || '#888078';
+    const full = ev.attendees >= ev.max;
+    return `
+    <div class="event-card">
+      <div class="event-city">${ev.emoji} ${ev.city}, ${ev.country}</div>
+      <div class="event-title">${ev.title}</div>
+      <div class="event-meta">
+        <div class="event-meta-row">📅 ${ev.date} · ${ev.time}</div>
+        <div class="event-meta-row">📍 ${ev.location}</div>
+        <div class="event-meta-row"><span class="cat-dot" style="background:${col}"></span>${ev.category}</div>
+      </div>
+      <div class="attendee-bar"><div class="attendee-fill" style="width:${pct}%;background:${full?'var(--accent2)':col}"></div></div>
+      <div class="attendee-label">${ev.attendees} / ${ev.max} attending ${full?'· <span style="color:var(--accent2);font-weight:600">Full — join waitlist</span>':''}</div>
+      <div class="event-footer">
+        <span class="badge" style="background:${col}20;color:${col};border:1px solid ${col}40">${ev.category}</span>
+        <button class="btn btn-ghost btn-sm" onclick="openSignup()">${full?'Join Waitlist':'RSVP Free'}</button>
+      </div>
+    </div>`}).join('');
+}
+
+function setFilter(cat, btn) {
+  activeFilter = cat;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderEvents(cat==='all' ? EVENTS : EVENTS.filter(e => e.category===cat));
+}
+
+function submitEvent() {
+  const title = document.getElementById('e-title').value.trim();
+  const city = document.getElementById('e-city').value.trim();
+  const venue = document.getElementById('e-venue').value.trim();
+  const date = document.getElementById('e-date').value;
+  const err = document.getElementById('e-err');
+  if (!title || !city || !venue || !date) { err.textContent='Please fill in all required fields.'; err.style.display='block'; return; }
+  err.style.display='none';
+  document.getElementById('create-modal').classList.remove('open');
+  const toast = document.getElementById('toast');
+  toast.style.display='block';
+  setTimeout(() => toast.style.display='none', 3500);
+}
+
+renderEvents(EVENTS);
+setTimeout(() => initCityAutocomplete('e-city','e-city-dd','e-city-spin'), 100);
+</script>
+</body>
+</html>
