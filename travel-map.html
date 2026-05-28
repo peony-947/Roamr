@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Travel Map — Roamr</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Instrument+Sans:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<style>
+html, body { height: 100%; overflow: hidden; }
+.tm-page { padding-top: 68px; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+.tm-header { padding: 0.85rem 2rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; background: var(--card-bg); gap: 1rem; }
+.tm-header-left { display: flex; align-items: center; gap: 1.25rem; }
+.tm-title { font-family: 'Bebas Neue', sans-serif; font-size: 1.6rem; line-height: 1; }
+.tm-breadcrumb { display: flex; align-items: center; gap: 0.4rem; font-size: 0.78rem; }
+.bc-world { color: var(--muted); cursor: pointer; font-weight: 600; transition: color 0.15s; }
+.bc-world:hover { color: var(--white); }
+.bc-world.active { color: var(--white); }
+.bc-sep { color: var(--border2); }
+.bc-country { color: var(--accent); font-weight: 600; display: none; }
+.back-btn { display: none; align-items: center; gap: 0.35rem; font-size: 0.72rem; font-weight: 600; color: var(--muted); cursor: pointer; padding: 0.3rem 0.65rem; border: 1px solid var(--border); border-radius: 4px; transition: all 0.15s; background: none; font-family: 'Instrument Sans', sans-serif; letter-spacing: 0.05em; text-transform: uppercase; }
+.back-btn:hover { color: var(--white); border-color: var(--border2); }
+.back-btn.show { display: flex; }
+.tm-layout { flex: 1; display: flex; overflow: hidden; }
+.tm-map-area { flex: 1; position: relative; overflow: hidden; }
+#travel-map { width: 100%; height: 100%; }
+
+/* Map overlays */
+.map-chips { position: absolute; top: 1rem; left: 1rem; z-index: 500; display: flex; gap: 0.5rem; flex-wrap: wrap; pointer-events: none; }
+.map-chip { background: rgba(10,10,10,0.88); border: 1px solid var(--border); border-radius: 4px; padding: 0.3rem 0.75rem; font-size: 0.72rem; font-weight: 600; color: var(--white); backdrop-filter: blur(8px); }
+.map-chip .cv { color: var(--accent); }
+.map-chip .cd { color: #5b9cf6; }
+.map-loading { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 600; background: rgba(10,10,10,0.9); border: 1px solid var(--border); border-radius: 8px; padding: 1.25rem 2rem; font-size: 0.82rem; color: var(--muted); display: none; backdrop-filter: blur(12px); }
+.map-loading.show { display: block; }
+
+/* Legend */
+.map-legend { position: absolute; bottom: 1.25rem; right: 1rem; z-index: 500; background: rgba(10,10,10,0.88); border: 1px solid var(--border); border-radius: 6px; padding: 0.6rem 0.9rem; backdrop-filter: blur(8px); display: flex; flex-direction: column; gap: 0.35rem; }
+.leg-row { display: flex; align-items: center; gap: 0.5rem; font-size: 0.65rem; color: var(--muted); font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
+.leg-sw { width: 12px; height: 12px; border-radius: 2px; flex-shrink: 0; }
+
+/* Country detail bar */
+.cdb { position: absolute; bottom: 1.25rem; left: 50%; transform: translateX(-50%); z-index: 500; background: rgba(10,10,10,0.92); border: 1px solid var(--border); border-radius: 10px; padding: 1rem 1.5rem; backdrop-filter: blur(14px); min-width: 260px; max-width: 420px; text-align: center; display: none; }
+.cdb.show { display: block; }
+.cdb-flag { font-size: 2rem; line-height: 1; margin-bottom: 0.3rem; }
+.cdb-name { font-family: 'Bebas Neue', sans-serif; font-size: 1.6rem; line-height: 1; }
+.cdb-status { font-size: 0.68rem; color: var(--muted); margin-top: 0.2rem; text-transform: uppercase; letter-spacing: 0.1em; }
+.cdb-cities { display: flex; gap: 0.35rem; flex-wrap: wrap; justify-content: center; margin-top: 0.65rem; }
+.cdb-city-tag { font-size: 0.68rem; padding: 0.18rem 0.5rem; border-radius: 3px; font-weight: 600; letter-spacing: 0.03em; cursor: default; }
+.cdb-city-tag.capital { background: rgba(232,76,43,0.15); color: var(--accent); border: 1px solid rgba(232,76,43,0.25); }
+.cdb-city-tag.city { background: rgba(255,255,255,0.06); color: var(--muted); border: 1px solid var(--border); }
+.cdb-actions { display: flex; gap: 0.5rem; justify-content: center; margin-top: 0.85rem; }
+
+/* Sidebar */
+.tm-sidebar { width: 295px; border-left: 1px solid var(--border); background: var(--card-bg); display: flex; flex-direction: column; overflow: hidden; flex-shrink: 0; }
+.sb-scroll { flex: 1; overflow-y: auto; }
+.sb-scroll::-webkit-scrollbar { width: 3px; }
+.sb-scroll::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+.sb-sec-hdr { padding: 0.85rem 1.1rem 0.7rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; background: var(--card-bg); z-index: 5; }
+.sb-sec-label { font-size: 0.64rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.16em; color: var(--muted); display: flex; align-items: center; gap: 0.5rem; }
+.sb-count { font-family: 'Bebas Neue', sans-serif; font-size: 1.1rem; color: var(--accent); line-height: 1; }
+.sb-count.blue { color: #5b9cf6; }
+.sb-add { background: none; border: 1px solid var(--border); color: var(--muted); font-size: 0.65rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; padding: 0.2rem 0.55rem; border-radius: 3px; cursor: pointer; transition: all 0.15s; font-family: 'Instrument Sans', sans-serif; }
+.sb-add:hover { color: var(--white); border-color: var(--border2); }
+.sb-divider { height: 1px; background: var(--border); flex-shrink: 0; }
+.sb-empty { padding: 1.5rem 1.1rem; text-align: center; }
+.sb-empty-icon { font-size: 1.75rem; margin-bottom: 0.5rem; }
+.sb-empty-text { font-size: 0.78rem; color: var(--muted); line-height: 1.6; }
+
+/* Country items */
+.ci { display: flex; align-items: flex-start; gap: 0.7rem; padding: 0.65rem 1.1rem; border-bottom: 1px solid var(--border); cursor: pointer; transition: background 0.12s; position: relative; }
+.ci:hover { background: rgba(255,255,255,0.025); }
+.ci:last-child { border-bottom: none; }
+.ci-flag { font-size: 1.3rem; line-height: 1; flex-shrink: 0; margin-top: 0.05rem; }
+.ci-info { flex: 1; min-width: 0; }
+.ci-name { font-size: 0.84rem; font-weight: 600; color: var(--white); }
+.ci-cities { font-size: 0.7rem; color: var(--muted); margin-top: 0.15rem; line-height: 1.4; }
+.ci-rm { opacity: 0; background: none; border: none; color: var(--muted); cursor: pointer; font-size: 0.9rem; padding: 0.1rem 0.2rem; transition: all 0.12s; flex-shrink: 0; }
+.ci:hover .ci-rm { opacity: 0.6; }
+.ci-rm:hover { opacity: 1 !important; color: var(--accent); }
+
+/* Add Country Modal */
+.acm-overlay { display: none; position: fixed; inset: 0; z-index: 1000; background: rgba(0,0,0,0.75); align-items: center; justify-content: center; padding: 2rem; }
+.acm-overlay.open { display: flex; }
+.acm-box { background: #141410; border: 1px solid rgba(255,255,255,0.12); border-radius: 12px; padding: 1.75rem; width: 100%; max-width: 400px; position: relative; }
+.acm-title { font-family: 'Bebas Neue', sans-serif; font-size: 1.5rem; margin-bottom: 0.35rem; }
+.acm-sub { font-size: 0.78rem; color: var(--muted); margin-bottom: 1.1rem; }
+.acm-type { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
+.acm-t-btn { flex: 1; padding: 0.55rem; border-radius: 4px; border: 1px solid var(--border); background: transparent; color: var(--muted); font-family: 'Instrument Sans', sans-serif; font-size: 0.75rem; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; cursor: pointer; transition: all 0.15s; }
+.acm-t-btn.v-active { border-color: rgba(232,76,43,0.5); background: rgba(232,76,43,0.1); color: var(--accent); }
+.acm-t-btn.d-active { border-color: rgba(91,156,246,0.5); background: rgba(91,156,246,0.1); color: #5b9cf6; }
+.acm-input { width: 100%; background: #0a0a0a; border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 0.6rem 0.85rem; color: var(--white); font-size: 0.88rem; outline: none; font-family: 'Instrument Sans', sans-serif; transition: border-color 0.2s; margin-bottom: 0.6rem; }
+.acm-input:focus { border-color: rgba(232,76,43,0.45); }
+.acm-results { max-height: 220px; overflow-y: auto; border: 1px solid rgba(255,255,255,0.08); border-radius: 6px; }
+.acm-results:empty { display: none; }
+.acm-ri { display: flex; align-items: center; gap: 0.7rem; padding: 0.55rem 0.85rem; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.05); transition: background 0.1s; font-size: 0.85rem; }
+.acm-ri:last-child { border-bottom: none; }
+.acm-ri:hover { background: rgba(232,76,43,0.1); }
+.acm-ri.already { opacity: 0.4; pointer-events: none; }
+.acm-ri-flag { font-size: 1.2rem; }
+.acm-ri-name { font-weight: 600; color: var(--white); flex: 1; }
+.acm-ri-status { font-size: 0.65rem; color: var(--muted); }
+.acm-close { position: absolute; top: 0.9rem; right: 1rem; background: none; border: none; color: var(--muted); font-size: 1.4rem; cursor: pointer; line-height: 1; }
+.acm-close:hover { color: var(--white); }
+.acm-no-results { padding: 1rem; text-align: center; font-size: 0.8rem; color: var(--muted); }
+
+/* City marker popup */
+.city-popup { background: #141410 !important; border: 1px solid rgba(255,255,255,0.12) !important; color: var(--white) !important; border-radius: 6px !important; font-family: 'Instrument Sans', sans-serif !important; }
+.city-popup .leaflet-popup-content-wrapper { background: #141410; border: 1px solid rgba(255,255,255,0.12); border-radius: 6px; box-shadow: 0 4px 20px rgba(0,0,0,0.6); padding: 0; }
+.city-popup .leaflet-popup-content { margin: 0; }
+.city-popup .leaflet-popup-tip { background: #141410; }
+.city-popup .leaflet-popup-tip-container { display: none; }
+.cp-inner { padding: 0.7rem 0.9rem; }
+.cp-name { font-weight: 600; font-size: 0.85rem; color: var(--white); }
+.cp-type { font-size: 0.65rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin-top: 0.1rem; }
+.cp-btn { margin-top: 0.6rem; width: 100%; padding: 0.35rem; border-radius: 3px; font-family: 'Instrument Sans', sans-serif; font-size: 0.7rem; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; cursor: pointer; border: 1px solid; transition: all 0.15s; }
+.cp-btn.mark { background: rgba(232,76,43,0.1); border-color: rgba(232,76,43,0.3); color: var(--accent); }
+.cp-btn.mark:hover { background: rgba(232,76,43,0.2); }
+.cp-btn.unmark { background: rgba(255,255,255,0.05); border-color: var(--border); color: var(--muted); }
+.cp-btn.unmark:hover { background: rgba(255,255,255,0.1); color: var(--white); }
+
+/* Leaflet overrides */
+.leaflet-container { background: #0b0b09; font-family: 'Instrument Sans', sans-serif; }
+.leaflet-control-zoom a { background: #1a1a14 !important; border-color: rgba(255,255,255,0.1) !important; color: var(--white) !important; }
+.leaflet-control-zoom a:hover { background: #252518 !important; }
+.leaflet-control-attribution { background: rgba(8,8,8,0.75) !important; color: #444 !important; font-size: 0.58rem !important; }
+.leaflet-control-attribution a { color: #444 !important; }
+.lt { background: #1a1a14 !important; border: 1px solid rgba(255,255,255,0.12) !important; color: var(--white) !important; font-family: 'Instrument Sans', sans-serif !important; font-size: 0.78rem !important; border-radius: 4px !important; box-shadow: 0 4px 16px rgba(0,0,0,0.6) !important; padding: 0.3rem 0.55rem !important; white-space: nowrap; }
+.lt::before, .lt::after { display: none !important; }
+.leaflet-popup-close-button { color: #888 !important; font-size: 1rem !important; top: 6px !important; right: 8px !important; }
+
+@media(max-width:768px) {
+  html, body { overflow: auto; }
+  .tm-page { height: auto; overflow: auto; }
+  .tm-layout { flex-direction: column; }
+  .tm-map-area { height: 65vw; min-height: 320px; }
+  .tm-sidebar { width: 100%; border-left: none; border-top: 1px solid var(--border); max-height: 50vh; }
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="index.html" class="logo">Roam<span>r</span></a>
+  <ul>
+    <li class="hide-mobile"><a href="discover.html">Discover</a></li>
+    <li class="hide-mobile"><a href="trips.html">Trips</a></li>
+    <li class="hide-mobile"><a href="my-trips.html">My Trips</a></li>
+    <li class="hide-mobile"><a href="events.html">Events</a></li>
+    <li class="hide-mobile"><a href="travel-map.html" class="active">Travel Map</a></li>
+    <li><a href="#" class="nav-cta" onclick="event.preventDefault();openSignup()">Join Free</a></li>
+  </ul>
+</nav>
+
+<div class="tm-page">
+  <div class="tm-header">
+    <div class="tm-header-left">
+      <div class="tm-title">Travel Map</div>
+      <div class="tm-breadcrumb">
+        <span class="bc-world active" id="bc-world" onclick="resetToWorld()">World</span>
+        <span class="bc-sep" id="bc-sep" style="display:none">›</span>
+        <span class="bc-country" id="bc-country"></span>
+      </div>
+    </div>
+    <button class="back-btn" id="back-btn" onclick="resetToWorld()">← World Map</button>
+  </div>
+
+  <div class="tm-layout">
+    <div class="tm-map-area">
+      <div class="map-chips">
+        <div class="map-chip"><span class="cv" id="stat-visited">0</span> Visited</div>
+        <div class="map-chip"><span class="cd" id="stat-desired">0</span> Dream Destinations</div>
+      </div>
+      <div id="travel-map"></div>
+      <div class="map-loading" id="map-loading">Loading map data…</div>
+      <div class="map-legend">
+        <div class="leg-row"><div class="leg-sw" style="background:#e84c2b"></div>Visited</div>
+        <div class="leg-row"><div class="leg-sw" style="background:#5b9cf6"></div>Dream Destination</div>
+        <div class="leg-row"><div class="leg-sw" style="background:#1d1d18;border:1px solid rgba(255,255,255,0.1)"></div>Unexplored</div>
+      </div>
+      <div class="cdb" id="cdb"></div>
+    </div>
+
+    <div class="tm-sidebar">
+      <div class="sb-scroll">
+        <div class="sb-sec-hdr">
+          <div class="sb-sec-label">
+            Countries Visited
+            <span class="sb-count" id="sb-v-count">0</span>
+          </div>
+          <button class="sb-add" onclick="openAddModal('visited')">+ Add</button>
+        </div>
+        <div id="visited-list"></div>
+
+        <div class="sb-divider"></div>
+
+        <div class="sb-sec-hdr">
+          <div class="sb-sec-label">
+            Dream Destinations
+            <span class="sb-count blue" id="sb-d-count">0</span>
+          </div>
+          <button class="sb-add" onclick="openAddModal('desired')">+ Add</button>
+        </div>
+        <div id="desired-list"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Add Country Modal -->
+<div class="acm-overlay" id="acm-overlay" onclick="if(event.target===this)closeAddModal()">
+  <div class="acm-box">
+    <button class="acm-close" onclick="closeAddModal()">×</button>
+    <div class="acm-title" id="acm-title">Add Country</div>
+    <p class="acm-sub" id="acm-sub">Search and select a country</p>
+    <div class="acm-type">
+      <button class="acm-t-btn" id="acm-t-visited" onclick="setModalType('visited')">Visited</button>
+      <button class="acm-t-btn" id="acm-t-desired" onclick="setModalType('desired')">Dream Destination</button>
+    </div>
+    <input type="text" class="acm-input" id="acm-search" placeholder="Search countries…" oninput="filterAcm(this.value)" autocomplete="off">
+    <div class="acm-results" id="acm-results"></div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
+<script src="shared.js"></script>
+<script src="signup-modal.js"></script>
+<script>
+renderSignupModal();
+
+// ═══ COUNTRY DATA ════════════════════════════════════════════════════
+// [numericId, iso2, name]
+const COUNTRY_RAW = [
+  [4,'AF','Afghanistan'],[8,'AL','Albania'],[12,'DZ','Algeria'],[20,'AD','Andorra'],
+  [24,'AO','Angola'],[28,'AG','Antigua and Barbuda'],[32,'AR','Argentina'],[36,'AU','Australia'],
+  [40,'AT','Austria'],[44,'BS','Bahamas'],[48,'BH','Bahrain'],[50,'BD','Bangladesh'],
+  [52,'BB','Barbados'],[56,'BE','Belgium'],[64,'BT','Bhutan'],[68,'BO','Bolivia'],
+  [70,'BA','Bosnia and Herzegovina'],[72,'BW','Botswana'],[76,'BR','Brazil'],[84,'BZ','Belize'],
+  [90,'SB','Solomon Islands'],[96,'BN','Brunei'],[100,'BG','Bulgaria'],[104,'MM','Myanmar'],
+  [108,'BI','Burundi'],[112,'BY','Belarus'],[116,'KH','Cambodia'],[120,'CM','Cameroon'],
+  [124,'CA','Canada'],[132,'CV','Cape Verde'],[140,'CF','Central African Republic'],
+  [144,'LK','Sri Lanka'],[148,'TD','Chad'],[152,'CL','Chile'],[156,'CN','China'],
+  [170,'CO','Colombia'],[174,'KM','Comoros'],[178,'CG','Congo'],[180,'CD','DR Congo'],
+  [188,'CR','Costa Rica'],[191,'HR','Croatia'],[192,'CU','Cuba'],[196,'CY','Cyprus'],
+  [203,'CZ','Czech Republic'],[204,'BJ','Benin'],[208,'DK','Denmark'],[212,'DM','Dominica'],
+  [214,'DO','Dominican Republic'],[218,'EC','Ecuador'],[222,'SV','El Salvador'],
+  [226,'GQ','Equatorial Guinea'],[231,'ET','Ethiopia'],[232,'ER','Eritrea'],[242,'FJ','Fiji'],
+  [246,'FI','Finland'],[250,'FR','France'],[266,'GA','Gabon'],[270,'GM','Gambia'],
+  [275,'PS','Palestine'],[276,'DE','Germany'],[288,'GH','Ghana'],[296,'KI','Kiribati'],
+  [300,'GR','Greece'],[308,'GD','Grenada'],[320,'GT','Guatemala'],[324,'GN','Guinea'],
+  [328,'GY','Guyana'],[332,'HT','Haiti'],[340,'HN','Honduras'],[348,'HU','Hungary'],
+  [352,'IS','Iceland'],[356,'IN','India'],[360,'ID','Indonesia'],[364,'IR','Iran'],
+  [368,'IQ','Iraq'],[372,'IE','Ireland'],[376,'IL','Israel'],[380,'IT','Italy'],
+  [388,'JM','Jamaica'],[392,'JP','Japan'],[398,'KZ','Kazakhstan'],[400,'JO','Jordan'],
+  [404,'KE','Kenya'],[408,'KP','North Korea'],[410,'KR','South Korea'],[414,'KW','Kuwait'],
+  [418,'LA','Laos'],[422,'LB','Lebanon'],[426,'LS','Lesotho'],[428,'LV','Latvia'],
+  [430,'LR','Liberia'],[434,'LY','Libya'],[438,'LI','Liechtenstein'],[440,'LT','Lithuania'],
+  [442,'LU','Luxembourg'],[450,'MG','Madagascar'],[454,'MW','Malawi'],[458,'MY','Malaysia'],
+  [462,'MV','Maldives'],[466,'ML','Mali'],[470,'MT','Malta'],[478,'MR','Mauritania'],
+  [480,'MU','Mauritius'],[484,'MX','Mexico'],[492,'MC','Monaco'],[496,'MN','Mongolia'],
+  [498,'MD','Moldova'],[499,'ME','Montenegro'],[504,'MA','Morocco'],[508,'MZ','Mozambique'],
+  [512,'OM','Oman'],[516,'NA','Namibia'],[520,'NR','Nauru'],[524,'NP','Nepal'],
+  [528,'NL','Netherlands'],[548,'VU','Vanuatu'],[554,'NZ','New Zealand'],[558,'NI','Nicaragua'],
+  [562,'NE','Niger'],[566,'NG','Nigeria'],[578,'NO','Norway'],[583,'FM','Micronesia'],
+  [584,'MH','Marshall Islands'],[585,'PW','Palau'],[586,'PK','Pakistan'],[591,'PA','Panama'],
+  [598,'PG','Papua New Guinea'],[600,'PY','Paraguay'],[604,'PE','Peru'],[608,'PH','Philippines'],
+  [616,'PL','Poland'],[620,'PT','Portugal'],[624,'GW','Guinea-Bissau'],[626,'TL','Timor-Leste'],
+  [634,'QA','Qatar'],[642,'RO','Romania'],[643,'RU','Russia'],[646,'RW','Rwanda'],
+  [659,'KN','Saint Kitts and Nevis'],[662,'LC','Saint Lucia'],[670,'VC','Saint Vincent'],
+  [678,'ST','São Tomé and Príncipe'],[682,'SA','Saudi Arabia'],[686,'SN','Senegal'],
+  [688,'RS','Serbia'],[690,'SC','Seychelles'],[694,'SL','Sierra Leone'],[702,'SG','Singapore'],
+  [703,'SK','Slovakia'],[705,'SI','Slovenia'],[706,'SO','Somalia'],[710,'ZA','South Africa'],
+  [716,'ZW','Zimbabwe'],[724,'ES','Spain'],[728,'SS','South Sudan'],[729,'SD','Sudan'],
+  [740,'SR','Suriname'],[748,'SZ','Eswatini'],[752,'SE','Sweden'],[756,'CH','Switzerland'],
+  [760,'SY','Syria'],[762,'TJ','Tajikistan'],[764,'TH','Thailand'],[768,'TG','Togo'],
+  [776,'TO','Tonga'],[780,'TT','Trinidad and Tobago'],[784,'AE','United Arab Emirates'],
+  [788,'TN','Tunisia'],[792,'TR','Turkey'],[795,'TM','Turkmenistan'],[798,'TV','Tuvalu'],
+  [800,'UG','Uganda'],[804,'UA','Ukraine'],[807,'MK','North Macedonia'],[818,'EG','Egypt'],
+  [826,'GB','United Kingdom'],[834,'TZ','Tanzania'],[840,'US','United States'],
+  [854,'BF','Burkina Faso'],[858,'UY','Uruguay'],[860,'UZ','Uzbekistan'],[862,'VE','Venezuela'],
+  [882,'WS','Samoa'],[887,'YE','Yemen'],[894,'ZM','Zambia'],[704,'VN','Vietnam'],[158,'TW','Taiwan'],
+  [233,'EE','Estonia'],[756,'CH','Switzerland']
+];
+
+// Build lookups
+const COUNTRY_BY_ID = {};
+const COUNTRY_BY_ISO2 = {};
+COUNTRY_RAW.forEach(([id, iso2, name]) => {
+  const e = { id: String(id), iso2, name };
+  COUNTRY_BY_ID[String(id)] = e;
+  if (!COUNTRY_BY_ISO2[iso2]) COUNTRY_BY_ISO2[iso2] = e;
+});
+const COUNTRY_LIST = Object.values(COUNTRY_BY_ISO2).sort((a, b) => a.name.localeCompare(b.name));
+
+function flag(iso2) {
+  if (!iso2 || iso2.length !== 2) return '🌍';
+  return [...iso2.toUpperCase()].map(c => String.fromCodePoint(0x1F1E0 + c.charCodeAt(0) - 65)).join('');
+}
+
+// ═══ CITY DATA ═══════════════════════════════════════════════════════
+// iso2 -> [[name, lat, lng, isCapital, rank], ...]
+const CITIES = {
+  'AF':[['Kabul',34.5253,69.1783,1,1],['Kandahar',31.6285,65.7372,0,2],['Mazar-i-Sharif',36.7069,67.1101,0,3]],
+  'AL':[['Tirana',41.3275,19.8187,1,1],['Durrës',41.3246,19.4565,0,2],['Vlorë',40.4667,19.4833,0,3]],
+  'DZ':[['Algiers',36.7372,3.0865,1,1],['Oran',35.6969,-0.6331,0,2],['Constantine',36.3650,6.6147,0,3]],
+  'AO':[['Luanda',-8.8368,13.2343,1,1],['Huambo',-12.7761,15.7397,0,2]],
+  'AR':[['Buenos Aires',-34.6037,-58.3816,1,1],['Córdoba',-31.4201,-64.1888,0,2],['Rosario',-32.9442,-60.6505,0,3]],
+  'AU':[['Canberra',-35.2809,149.1300,1,1],['Sydney',-33.8688,151.2093,0,2],['Melbourne',-37.8136,144.9631,0,3]],
+  'AT':[['Vienna',48.2082,16.3738,1,1],['Graz',47.0707,15.4395,0,2],['Salzburg',47.8095,13.0550,0,3]],
+  'BD':[['Dhaka',23.8103,90.4125,1,1],['Chittagong',22.3569,91.7832,0,2],['Sylhet',24.9045,91.8611,0,3]],
+  'BE':[['Brussels',50.8503,4.3517,1,1],['Antwerp',51.2194,4.4025,0,2],['Ghent',51.0543,3.7174,0,3]],
+  'BO':[['Sucre',-19.0196,-65.2619,1,1],['La Paz',-16.5000,-68.1500,0,2],['Santa Cruz',-17.7833,-63.1833,0,3]],
+  'BA':[['Sarajevo',43.8563,18.4131,1,1],['Banja Luka',44.7722,17.1910,0,2],['Mostar',43.3438,17.8080,0,3]],
+  'BR':[['Brasília',-15.7801,-47.9292,1,1],['São Paulo',-23.5505,-46.6333,0,2],['Rio de Janeiro',-22.9068,-43.1729,0,3]],
+  'BG':[['Sofia',42.6977,23.3219,1,1],['Plovdiv',42.1354,24.7453,0,2],['Varna',43.2141,27.9147,0,3]],
+  'MM':[['Naypyidaw',19.7633,96.0785,1,1],['Yangon',16.8661,96.1951,0,2],['Mandalay',21.9588,96.0891,0,3]],
+  'KH':[['Phnom Penh',11.5564,104.9282,1,1],['Siem Reap',13.3671,103.8448,0,2],['Battambang',13.0957,103.2022,0,3]],
+  'CA':[['Ottawa',45.4215,-75.6972,1,1],['Toronto',43.6532,-79.3832,0,2],['Vancouver',49.2827,-123.1207,0,3]],
+  'CL':[['Santiago',-33.4489,-70.6693,1,1],['Valparaíso',-33.0472,-71.6127,0,2],['Concepción',-36.8270,-73.0498,0,3]],
+  'CN':[['Beijing',39.9042,116.4074,1,1],['Shanghai',31.2304,121.4737,0,2],['Shenzhen',22.5431,114.0579,0,3]],
+  'CO':[['Bogotá',4.7110,-74.0721,1,1],['Medellín',6.2518,-75.5636,0,2],['Cali',3.4516,-76.5320,0,3]],
+  'CR':[['San José',9.9281,-84.0907,1,1],['Cartago',9.8641,-83.9195,0,2]],
+  'HR':[['Zagreb',45.8150,15.9819,1,1],['Split',43.5081,16.4402,0,2],['Dubrovnik',42.6507,18.0944,0,3]],
+  'CU':[['Havana',23.1136,-82.3666,1,1],['Santiago de Cuba',20.0173,-75.8186,0,2],['Camagüey',21.3803,-77.9161,0,3]],
+  'CZ':[['Prague',50.0755,14.4378,1,1],['Brno',49.1951,16.6068,0,2],['Ostrava',49.8209,18.2625,0,3]],
+  'DK':[['Copenhagen',55.6761,12.5683,1,1],['Aarhus',56.1629,10.2039,0,2],['Odense',55.4038,10.4024,0,3]],
+  'DO':[['Santo Domingo',18.4861,-69.9312,1,1],['Santiago',19.4500,-70.6972,0,2]],
+  'EC':[['Quito',-0.1807,-78.4678,1,1],['Guayaquil',-2.1962,-79.8862,0,2],['Cuenca',-2.9001,-79.0059,0,3]],
+  'EG':[['Cairo',30.0444,31.2357,1,1],['Alexandria',31.2001,29.9187,0,2],['Luxor',25.6872,32.6396,0,3]],
+  'ET':[['Addis Ababa',9.0250,38.7469,1,1],['Dire Dawa',9.5933,41.8661,0,2],['Gondar',12.6030,37.4640,0,3]],
+  'FI':[['Helsinki',60.1699,24.9384,1,1],['Tampere',61.4991,23.7871,0,2],['Turku',60.4518,22.2666,0,3]],
+  'FR':[['Paris',48.8566,2.3522,1,1],['Marseille',43.2965,5.3698,0,2],['Lyon',45.7640,4.8357,0,3]],
+  'DE':[['Berlin',52.5200,13.4050,1,1],['Hamburg',53.5753,10.0153,0,2],['Munich',48.1351,11.5820,0,3]],
+  'GH':[['Accra',5.5600,-0.2057,1,1],['Kumasi',6.6666,-1.6163,0,2],['Tamale',9.4075,-0.8533,0,3]],
+  'GR':[['Athens',37.9838,23.7275,1,1],['Thessaloniki',40.6401,22.9444,0,2],['Patras',38.2466,21.7346,0,3]],
+  'GT':[['Guatemala City',14.6349,-90.5069,1,1],['Quetzaltenango',14.8333,-91.5167,0,2]],
+  'HU':[['Budapest',47.4979,19.0402,1,1],['Debrecen',47.5316,21.6273,0,2],['Miskolc',48.1035,20.7784,0,3]],
+  'IS':[['Reykjavík',64.1355,-21.8954,1,1],['Akureyri',65.6885,-18.1262,0,2]],
+  'IN':[['New Delhi',28.6139,77.2090,1,1],['Mumbai',19.0760,72.8777,0,2],['Bangalore',12.9716,77.5946,0,3]],
+  'ID':[['Jakarta',-6.2088,106.8456,1,1],['Surabaya',-7.2575,112.7521,0,2],['Bali',-8.3405,115.0920,0,3]],
+  'IR':[['Tehran',35.6892,51.3890,1,1],['Isfahan',32.6539,51.6660,0,2],['Shiraz',29.5918,52.5837,0,3]],
+  'IQ':[['Baghdad',33.3152,44.3661,1,1],['Basra',30.5085,47.7804,0,2],['Mosul',36.3400,43.1300,0,3]],
+  'IE':[['Dublin',53.3498,-6.2603,1,1],['Cork',51.8985,-8.4756,0,2],['Galway',53.2707,-9.0568,0,3]],
+  'IL':[['Jerusalem',31.7683,35.2137,1,1],['Tel Aviv',32.0853,34.7818,0,2],['Haifa',32.7940,34.9896,0,3]],
+  'IT':[['Rome',41.9028,12.4964,1,1],['Milan',45.4654,9.1859,0,2],['Florence',43.7696,11.2558,0,3]],
+  'JP':[['Tokyo',35.6762,139.6503,1,1],['Osaka',34.6937,135.5023,0,2],['Kyoto',35.0116,135.7681,0,3]],
+  'KZ':[['Astana',51.1801,71.4460,1,1],['Almaty',43.2220,76.8512,0,2],['Shymkent',42.3000,69.5996,0,3]],
+  'JO':[['Amman',31.9500,35.9333,1,1],['Petra',30.3285,35.4444,0,2],['Aqaba',29.5267,35.0078,0,3]],
+  'KE':[['Nairobi',-1.2921,36.8219,1,1],['Mombasa',-4.0435,39.6682,0,2],['Kisumu',-0.1022,34.7617,0,3]],
+  'KR':[['Seoul',37.5665,126.9780,1,1],['Busan',35.1796,129.0756,0,2],['Incheon',37.4563,126.7052,0,3]],
+  'LA':[['Vientiane',17.9757,102.6331,1,1],['Luang Prabang',19.8833,102.1333,0,2]],
+  'LB':[['Beirut',33.8938,35.5018,1,1],['Tripoli',34.4367,35.8497,0,2]],
+  'LV':[['Riga',56.9460,24.1059,1,1],['Daugavpils',55.8747,26.5361,0,2]],
+  'LT':[['Vilnius',54.6872,25.2797,1,1],['Kaunas',54.8985,23.9036,0,2],['Klaipėda',55.7033,21.1443,0,3]],
+  'MY':[['Kuala Lumpur',3.1390,101.6869,1,1],['George Town',5.4141,100.3288,0,2],['Kota Kinabalu',5.9804,116.0735,0,3]],
+  'MV':[['Malé',4.1755,73.5093,1,1]],
+  'MT':[['Valletta',35.8997,14.5147,1,1],['Sliema',35.9117,14.5017,0,2]],
+  'MX':[['Mexico City',19.4326,-99.1332,1,1],['Guadalajara',20.6597,-103.3496,0,2],['Monterrey',25.6866,-100.3161,0,3]],
+  'MN':[['Ulaanbaatar',47.8864,106.9057,1,1],['Erdenet',49.0289,104.0452,0,2]],
+  'MA':[['Rabat',34.0209,-6.8416,1,1],['Casablanca',33.5731,-7.5898,0,2],['Marrakech',31.6295,-7.9811,0,3]],
+  'MZ':[['Maputo',-25.9655,32.5832,1,1],['Beira',-19.8437,34.8389,0,2]],
+  'NA':[['Windhoek',-22.5597,17.0832,1,1],['Swakopmund',-22.6786,14.5266,0,2]],
+  'NP':[['Kathmandu',27.7172,85.3240,1,1],['Pokhara',28.2096,83.9856,0,2],['Chitwan',27.5291,84.3542,0,3]],
+  'NL':[['Amsterdam',52.3676,4.9041,1,1],['Rotterdam',51.9244,4.4777,0,2],['The Hague',52.0705,4.3007,0,3]],
+  'NZ':[['Wellington',-41.2865,174.7762,1,1],['Auckland',-36.8509,174.7645,0,2],['Christchurch',-43.5321,172.6362,0,3]],
+  'NG':[['Abuja',9.0765,7.3986,1,1],['Lagos',6.5244,3.3792,0,2],['Kano',12.0022,8.5920,0,3]],
+  'NO':[['Oslo',59.9139,10.7522,1,1],['Bergen',60.3913,5.3221,0,2],['Trondheim',63.4305,10.3951,0,3]],
+  'PK':[['Islamabad',33.7294,73.0931,1,1],['Karachi',24.8607,67.0011,0,2],['Lahore',31.5497,74.3436,0,3]],
+  'PA':[['Panama City',8.9936,-79.5197,1,1],['Colón',9.3595,-79.8975,0,2]],
+  'PE':[['Lima',-12.0464,-77.0428,1,1],['Cusco',-13.5319,-71.9675,0,2],['Arequipa',-16.4090,-71.5375,0,3]],
+  'PH':[['Manila',14.5995,120.9842,1,1],['Cebu City',10.3157,123.8854,0,2],['Davao',7.1908,125.4553,0,3]],
+  'PL':[['Warsaw',52.2297,21.0122,1,1],['Kraków',50.0647,19.9450,0,2],['Gdańsk',54.3521,18.6466,0,3]],
+  'PT':[['Lisbon',38.7223,-9.1393,1,1],['Porto',41.1579,-8.6291,0,2],['Faro',37.0194,-7.9322,0,3]],
+  'QA':[['Doha',25.2854,51.5310,1,1]],
+  'RO':[['Bucharest',44.4268,26.1025,1,1],['Cluj-Napoca',46.7712,23.6236,0,2],['Timișoara',45.7489,21.2087,0,3]],
+  'RU':[['Moscow',55.7558,37.6176,1,1],['Saint Petersburg',59.9311,30.3609,0,2],['Novosibirsk',54.9886,82.9114,0,3]],
+  'RW':[['Kigali',-1.9441,30.0619,1,1]],
+  'SA':[['Riyadh',24.7136,46.6753,1,1],['Jeddah',21.4858,39.1925,0,2],['Mecca',21.3891,39.8579,0,3]],
+  'SN':[['Dakar',14.7167,-17.4677,1,1],['Touba',14.8600,-15.8800,0,2]],
+  'RS':[['Belgrade',44.8176,20.4633,1,1],['Novi Sad',45.2671,19.8335,0,2]],
+  'SG':[['Singapore',1.3521,103.8198,1,1]],
+  'SK':[['Bratislava',48.1486,17.1077,1,1],['Košice',48.7164,21.2611,0,2]],
+  'SI':[['Ljubljana',46.0569,14.5058,1,1],['Maribor',46.5547,15.6459,0,2]],
+  'ZA':[['Pretoria',-25.7461,28.1881,1,1],['Cape Town',-33.9249,18.4241,0,2],['Johannesburg',-26.2041,28.0473,0,3]],
+  'ES':[['Madrid',40.4168,-3.7038,1,1],['Barcelona',41.3851,2.1734,0,2],['Seville',37.3891,-5.9845,0,3]],
+  'SE':[['Stockholm',59.3293,18.0686,1,1],['Gothenburg',57.7089,11.9746,0,2],['Malmö',55.6050,13.0038,0,3]],
+  'CH':[['Bern',46.9480,7.4474,1,1],['Zurich',47.3769,8.5417,0,2],['Geneva',46.2044,6.1432,0,3]],
+  'SY':[['Damascus',33.5138,36.2765,1,1],['Aleppo',36.2021,37.1343,0,2]],
+  'TW':[['Taipei',25.0330,121.5654,1,1],['Kaohsiung',22.6273,120.3014,0,2],['Taichung',24.1477,120.6736,0,3]],
+  'TH':[['Bangkok',13.7563,100.5018,1,1],['Chiang Mai',18.7883,98.9853,0,2],['Phuket',7.8804,98.3923,0,3]],
+  'TN':[['Tunis',36.8190,10.1657,1,1],['Sfax',34.7400,10.7600,0,2]],
+  'TR':[['Ankara',39.9334,32.8597,1,1],['Istanbul',41.0082,28.9784,0,2],['Izmir',38.4192,27.1287,0,3]],
+  'UG':[['Kampala',0.3476,32.5825,1,1],['Gulu',2.7746,32.2996,0,2]],
+  'UA':[['Kyiv',50.4501,30.5234,1,1],['Kharkiv',49.9935,36.2304,0,2],['Lviv',49.8397,24.0297,0,3]],
+  'AE':[['Abu Dhabi',24.4539,54.3773,1,1],['Dubai',25.2048,55.2708,0,2],['Sharjah',25.3463,55.4209,0,3]],
+  'GB':[['London',51.5074,-0.1278,1,1],['Edinburgh',55.9533,-3.1883,0,2],['Manchester',53.4808,-2.2426,0,3]],
+  'TZ':[['Dodoma',-6.1731,35.7395,1,1],['Dar es Salaam',-6.7924,39.2083,0,2],['Zanzibar',-6.1659,39.2026,0,3]],
+  'US':[['Washington D.C.',38.9072,-77.0369,1,1],['New York',40.7128,-74.0060,0,2],['Los Angeles',34.0522,-118.2437,0,3]],
+  'UY':[['Montevideo',-34.9011,-56.1645,1,1]],
+  'UZ':[['Tashkent',41.2995,69.2401,1,1],['Samarkand',39.6542,66.9597,0,2],['Bukhara',39.7747,64.4286,0,3]],
+  'VE':[['Caracas',10.4806,-66.9036,1,1],['Maracaibo',10.6666,-71.6124,0,2]],
+  'VN':[['Hanoi',21.0285,105.8542,1,1],['Ho Chi Minh City',10.8231,106.6297,0,2],['Da Nang',16.0544,108.2022,0,3]],
+  'YE':[["Sana'a",15.3694,44.1910,1,1],['Aden',12.8028,45.0368,0,2]],
+  'ZM':[['Lusaka',-15.4167,28.2833,1,1],['Ndola',-12.9659,28.6370,0,2]],
+  'ZW':[['Harare',-17.8252,31.0335,1,1],['Bulawayo',-20.1500,28.5833,0,2]]
+};
+
+// ═══ STATE ═══════════════════════════════════════════════════════════
+const STORAGE_KEY = 'roamr_travel_map_v1';
+function loadState() {
+  try { const s = localStorage.getItem(STORAGE_KEY); if (s) return JSON.parse(s); } catch(e){}
+  return { visited: {}, desired: [] };
+}
+function saveState() { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch(e){} }
+let state = loadState();
+
+function getStatus(iso2) {
+  if (state.visited[iso2] !== undefined) return 'visited';
+  if (state.desired.includes(iso2)) return 'desired';
+  return 'none';
+}
+function addCountry(iso2, type) {
+  if (type === 'visited') {
+    if (!state.visited[iso2]) state.visited[iso2] = [];
+    state.desired = state.desired.filter(c => c !== iso2);
+  } else {
+    if (!state.desired.includes(iso2)) state.desired.push(iso2);
+    delete state.visited[iso2];
+  }
+  saveState();
+  refreshMapStyles();
+  renderSidebar();
+  updateStats();
+  // Re-highlight detail bar if we're viewing this country
+  if (currentIso2 === iso2) updateDetailBar(iso2);
+}
+function removeCountry(iso2) {
+  delete state.visited[iso2];
+  state.desired = state.desired.filter(c => c !== iso2);
+  saveState();
+  refreshMapStyles();
+  renderSidebar();
+  updateStats();
+  if (currentIso2 === iso2) updateDetailBar(iso2);
+}
+function toggleCity(iso2, cityName) {
+  if (!state.visited[iso2]) return;
+  const idx = state.visited[iso2].indexOf(cityName);
+  if (idx >= 0) state.visited[iso2].splice(idx, 1);
+  else state.visited[iso2].push(cityName);
+  saveState();
+  renderSidebar();
+  refreshCityMarkers(iso2);
+  updateDetailBar(iso2);
+}
+
+// ═══ MAP ═════════════════════════════════════════════════════════════
+const map = L.map('travel-map', {
+  zoomControl: true, scrollWheelZoom: true, minZoom: 1.5, maxZoom: 12
+}).setView([20, 5], 2);
+
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+  attribution: '© <a href="https://carto.com/">CartoDB</a>',
+  maxZoom: 19
+}).addTo(map);
+
+let worldLayer = null;
+let subdivLayer = null;
+let cityMarkerList = [];
+let currentId = null;
+let currentIso2 = null;
+let currentLayerRef = null;
+let layerById = {};
+let subdivisionsCache = null;
+
+function countryStyle(feature) {
+  const id = String(feature.id);
+  const c = COUNTRY_BY_ID[id];
+  const status = c ? getStatus(c.iso2) : 'none';
+  return {
+    fillColor: status === 'visited' ? '#e84c2b' : status === 'desired' ? '#5b9cf6' : '#1d1d18',
+    fillOpacity: status === 'visited' ? 0.52 : status === 'desired' ? 0.38 : 0.42,
+    color: status === 'none' ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.18)',
+    weight: 0.7, opacity: 1
+  };
+}
+
+async function initMap() {
+  document.getElementById('map-loading').classList.add('show');
+  try {
+    const res = await fetch('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json');
+    const topo = await res.json();
+    const countries = topojson.feature(topo, topo.objects.countries);
+    worldLayer = L.geoJSON(countries, {
+      style: countryStyle,
+      onEachFeature: (feature, layer) => {
+        const id = String(feature.id);
+        layerById[id] = layer;
+        const c = COUNTRY_BY_ID[id];
+        if (!c) return;
+        layer.bindTooltip(`<span style="font-weight:600">${flag(c.iso2)}</span> ${c.name}`, {className:'lt', direction:'auto', sticky:true});
+        layer.on('mouseover', () => { if (id !== currentId) layer.setStyle({fillOpacity: Math.min(countryStyle(feature).fillOpacity + 0.3, 0.8), weight: 1.2, color: 'rgba(255,255,255,0.3)'}); });
+        layer.on('mouseout',  () => { if (id !== currentId) worldLayer.resetStyle(layer); });
+        layer.on('click', () => { if (!currentId) drillInto(id, c, layer); });
+      }
+    }).addTo(map);
+  } catch(e) {
+    document.getElementById('map-loading').textContent = 'Map failed to load. Check your connection.';
+    document.getElementById('map-loading').classList.add('show');
+    return;
+  }
+  document.getElementById('map-loading').classList.remove('show');
+}
+
+async function drillInto(id, country, layer) {
+  currentId = id;
+  currentIso2 = country.iso2;
+  currentLayerRef = layer;
+
+  // UI updates
+  document.getElementById('back-btn').classList.add('show');
+  document.getElementById('bc-sep').style.display = 'inline';
+  document.getElementById('bc-country').style.display = 'inline';
+  document.getElementById('bc-country').textContent = country.name;
+  document.getElementById('bc-world').classList.remove('active');
+
+  // Disable click on all layers
+  if (worldLayer) worldLayer.eachLayer(l => l.off('click'));
+
+  // Zoom to country
+  try { map.fitBounds(layer.getBounds(), {padding: [40, 40], maxZoom: 8}); } catch(e){}
+
+  // Highlight selected, dim others
+  layer.setStyle({fillOpacity: 0.65, weight: 2, color: 'rgba(255,255,255,0.45)'});
+  if (worldLayer) {
+    worldLayer.eachLayer(l => {
+      if (l !== layer) l.setStyle({fillOpacity: 0.12, color: 'rgba(255,255,255,0.05)'});
+    });
+  }
+
+  // Show detail bar
+  updateDetailBar(country.iso2);
+
+  // Load subdivisions
+  await loadSubdivisions(country.iso2);
+
+  // City markers
+  showCityMarkers(country.iso2);
+}
+
+function resetToWorld() {
+  currentId = null;
+  currentIso2 = null;
+  currentLayerRef = null;
+
+  document.getElementById('back-btn').classList.remove('show');
+  document.getElementById('bc-sep').style.display = 'none';
+  document.getElementById('bc-country').style.display = 'none';
+  document.getElementById('bc-world').classList.add('active');
+  document.getElementById('cdb').classList.remove('show');
+
+  // Remove layers
+  if (subdivLayer) { map.removeLayer(subdivLayer); subdivLayer = null; }
+  cityMarkerList.forEach(m => map.removeLayer(m));
+  cityMarkerList = [];
+
+  // Restore styles + re-enable click
+  if (worldLayer) {
+    worldLayer.setStyle(countryStyle);
+    worldLayer.eachLayer(layer => {
+      const featureId = Object.keys(layerById).find(k => layerById[k] === layer);
+      if (!featureId) return;
+      const c = COUNTRY_BY_ID[featureId];
+      if (!c) return;
+      layer.off('click');
+      layer.on('mouseover', () => layer.setStyle({fillOpacity: Math.min(countryStyle({id: featureId}).fillOpacity + 0.3, 0.8), weight: 1.2, color: 'rgba(255,255,255,0.3)'}));
+      layer.on('mouseout',  () => worldLayer.resetStyle(layer));
+      layer.on('click', () => drillInto(featureId, c, layer));
+    });
+  }
+  map.setView([20, 5], 2, {animate: true, duration: 0.7});
+}
+
+function refreshMapStyles() {
+  if (!worldLayer) return;
+  worldLayer.setStyle(countryStyle);
+  if (currentLayerRef && currentId) {
+    currentLayerRef.setStyle({fillOpacity: 0.65, weight: 2, color: 'rgba(255,255,255,0.45)'});
+  }
+}
+
+async function loadSubdivisions(iso2) {
+  if (!subdivisionsCache) {
+    try {
+      document.getElementById('map-loading').textContent = 'Loading regions…';
+      document.getElementById('map-loading').classList.add('show');
+      const res = await fetch('https://cdn.jsdelivr.net/gh/nvkelso/natural-earth-vector@master/geojson/ne_110m_admin_1_states_provinces.geojson');
+      if (res.ok) subdivisionsCache = await res.json();
+    } catch(e) { /* fail silently */ }
+    document.getElementById('map-loading').classList.remove('show');
+  }
+  if (!subdivisionsCache || currentIso2 !== iso2) return;
+
+  const features = subdivisionsCache.features.filter(f => {
+    const p = f.properties;
+    return p.iso_a2 === iso2 || p.adm0_a3 === COUNTRY_BY_ISO2[iso2]?.iso3;
+  });
+  if (!features.length) return;
+
+  const gj = { type: 'FeatureCollection', features };
+  subdivLayer = L.geoJSON(gj, {
+    style: {
+      fillColor: 'transparent', fillOpacity: 0,
+      color: 'rgba(255,255,255,0.22)', weight: 0.8, opacity: 0.8
+    },
+    onEachFeature: (feature, layer) => {
+      const name = feature.properties.name || feature.properties.name_en || '';
+      const type = feature.properties.type_en || feature.properties.type || '';
+      if (name) layer.bindTooltip(`${name}${type ? ' <span style="opacity:0.5;font-size:0.7em">${type}</span>' : ''}`, {className: 'lt', direction: 'auto', sticky: true});
+    }
+  }).addTo(map);
+}
+
+function makeCityIcon(isCapital, isVisited) {
+  const color = isVisited ? '#2bb57d' : (isCapital ? '#e84c2b' : '#f5a623');
+  const size = isCapital ? 10 : 7;
+  return L.divIcon({
+    className: '',
+    html: `<div style="width:${size}px;height:${size}px;border-radius:50%;background:${color};border:2px solid rgba(255,255,255,0.6);box-shadow:0 0 8px ${color}99;transition:all 0.2s"></div>`,
+    iconSize: [size, size], iconAnchor: [size/2, size/2]
+  });
+}
+
+function showCityMarkers(iso2) {
+  cityMarkerList.forEach(m => map.removeLayer(m));
+  cityMarkerList = [];
+  const cities = CITIES[iso2] || [];
+  cities.forEach(([name, lat, lng, isCapital, rank]) => {
+    const visited = (state.visited[iso2] || []).includes(name);
+    const marker = L.marker([lat, lng], {icon: makeCityIcon(isCapital, visited)});
+    const cityType = isCapital ? 'Capital' : `${['', '2nd', '3rd'][rank] || rank + 'th'} city`;
+    const visitedState = (state.visited[iso2] || []).includes(name);
+    marker.bindPopup(() => buildCityPopup(iso2, name, isCapital, cityType), {
+      className: 'city-popup', maxWidth: 200, closeButton: true
+    });
+    marker.addTo(map);
+    cityMarkerList.push(marker);
+  });
+}
+
+function buildCityPopup(iso2, cityName, isCapital, cityType) {
+  const visited = (state.visited[iso2] || []).includes(cityName);
+  const canMark = state.visited[iso2] !== undefined;
+  const div = document.createElement('div');
+  div.className = 'cp-inner';
+  div.innerHTML = `
+    <div class="cp-name">${cityName}</div>
+    <div class="cp-type">${cityType}</div>
+    ${canMark ? `<button class="cp-btn ${visited ? 'unmark' : 'mark'}" onclick="toggleCity('${iso2}','${cityName.replace(/'/g,"\\'")}');this.closest('.leaflet-popup').querySelector('.leaflet-popup-close-button').click()">${visited ? '✓ Visited — unmark' : '+ Mark as visited'}</button>` : `<div style="font-size:0.68rem;color:var(--muted);margin-top:0.5rem">Add country as visited to track cities</div>`}
+  `;
+  return div;
+}
+
+function refreshCityMarkers(iso2) {
+  if (currentIso2 === iso2) showCityMarkers(iso2);
+}
+
+function updateDetailBar(iso2) {
+  const c = COUNTRY_BY_ISO2[iso2];
+  if (!c) return;
+  const status = getStatus(iso2);
+  const visitedCities = state.visited[iso2] || [];
+  const allCities = CITIES[iso2] || [];
+
+  const statusLabel = status === 'visited'
+    ? `<span style="color:#2bb57d">Visited ✓</span>${visitedCities.length ? ` · ${visitedCities.length} cit${visitedCities.length > 1 ? 'ies' : 'y'} logged` : ''}`
+    : status === 'desired' ? '<span style="color:#5b9cf6">Dream Destination</span>'
+    : '<span style="color:var(--muted)">Not yet explored</span>';
+
+  const cityTags = allCities.map(([name, ,, isCapital]) => {
+    const isVisited = visitedCities.includes(name);
+    return `<span class="cdb-city-tag ${isCapital ? 'capital' : 'city'}" style="${isVisited ? 'border-color:#2bb57d;color:#2bb57d;background:rgba(43,181,125,0.12)' : ''}">${isCapital ? '★ ' : ''}${name}${isVisited ? ' ✓' : ''}</span>`;
+  }).join('');
+
+  const actions = status === 'visited'
+    ? `<button class="btn btn-ghost btn-sm" onclick="removeCountry('${iso2}')">Remove</button>`
+    : status === 'desired'
+      ? `<button class="btn btn-primary btn-sm" onclick="addCountry('${iso2}','visited')">Mark Visited</button><button class="btn btn-ghost btn-sm" onclick="removeCountry('${iso2}')">Remove</button>`
+      : `<button class="btn btn-primary btn-sm" onclick="addCountry('${iso2}','visited')">+ Mark Visited</button><button class="btn btn-ghost btn-sm" onclick="addCountry('${iso2}','desired')">+ Dream Destination</button>`;
+
+  document.getElementById('cdb').innerHTML = `
+    <div class="cdb-flag">${flag(iso2)}</div>
+    <div class="cdb-name">${c.name}</div>
+    <div class="cdb-status">${statusLabel}</div>
+    ${allCities.length ? `<div class="cdb-cities">${cityTags}</div>` : ''}
+    <div class="cdb-actions">${actions}</div>
+  `;
+  document.getElementById('cdb').classList.add('show');
+}
+
+// ═══ SIDEBAR ═════════════════════════════════════════════════════════
+function renderSidebar() {
+  // Visited
+  const visitedIso2s = Object.keys(state.visited);
+  document.getElementById('sb-v-count').textContent = visitedIso2s.length;
+  const vEl = document.getElementById('visited-list');
+  if (!visitedIso2s.length) {
+    vEl.innerHTML = `<div class="sb-empty"><div class="sb-empty-icon">🗺️</div><p class="sb-empty-text">No countries visited yet.<br>Click on the map or use + Add.</p></div>`;
+  } else {
+    vEl.innerHTML = visitedIso2s.sort((a,b) => {
+      const na = COUNTRY_BY_ISO2[a]?.name || a;
+      const nb = COUNTRY_BY_ISO2[b]?.name || b;
+      return na.localeCompare(nb);
+    }).map(iso2 => {
+      const c = COUNTRY_BY_ISO2[iso2];
+      const name = c?.name || iso2;
+      const cities = state.visited[iso2] || [];
+      return `<div class="ci" onclick="focusCountry('${iso2}')">
+        <div class="ci-flag">${flag(iso2)}</div>
+        <div class="ci-info">
+          <div class="ci-name">${name}</div>
+          ${cities.length ? `<div class="ci-cities">${cities.join(', ')}</div>` : ''}
+        </div>
+        <button class="ci-rm" title="Remove" onclick="event.stopPropagation();removeCountry('${iso2}')">×</button>
+      </div>`;
+    }).join('');
+  }
+
+  // Desired
+  document.getElementById('sb-d-count').textContent = state.desired.length;
+  const dEl = document.getElementById('desired-list');
+  if (!state.desired.length) {
+    dEl.innerHTML = `<div class="sb-empty"><div class="sb-empty-icon">✨</div><p class="sb-empty-text">No dream destinations yet.<br>Add countries you want to explore.</p></div>`;
+  } else {
+    dEl.innerHTML = [...state.desired].sort((a,b) => {
+      const na = COUNTRY_BY_ISO2[a]?.name || a;
+      const nb = COUNTRY_BY_ISO2[b]?.name || b;
+      return na.localeCompare(nb);
+    }).map(iso2 => {
+      const c = COUNTRY_BY_ISO2[iso2];
+      const name = c?.name || iso2;
+      return `<div class="ci" onclick="focusCountry('${iso2}')">
+        <div class="ci-flag">${flag(iso2)}</div>
+        <div class="ci-info"><div class="ci-name">${name}</div></div>
+        <button class="ci-rm" title="Remove" onclick="event.stopPropagation();removeCountry('${iso2}')">×</button>
+      </div>`;
+    }).join('');
+  }
+}
+
+function updateStats() {
+  document.getElementById('stat-visited').textContent = Object.keys(state.visited).length;
+  document.getElementById('stat-desired').textContent = state.desired.length;
+}
+
+function focusCountry(iso2) {
+  const entry = COUNTRY_BY_ISO2[iso2];
+  if (!entry) return;
+  const id = entry.id;
+  const layer = layerById[id];
+  if (!layer) return;
+  if (currentId) resetToWorld();
+  setTimeout(() => drillInto(id, entry, layer), currentId ? 800 : 0);
+}
+
+// ═══ ADD MODAL ═══════════════════════════════════════════════════════
+let modalType = 'visited';
+function openAddModal(type) {
+  modalType = type;
+  setModalType(type);
+  document.getElementById('acm-search').value = '';
+  document.getElementById('acm-overlay').classList.add('open');
+  filterAcm('');
+  setTimeout(() => document.getElementById('acm-search').focus(), 100);
+}
+function closeAddModal() { document.getElementById('acm-overlay').classList.remove('open'); }
+function setModalType(type) {
+  modalType = type;
+  document.getElementById('acm-t-visited').className = 'acm-t-btn' + (type === 'visited' ? ' v-active' : '');
+  document.getElementById('acm-t-desired').className = 'acm-t-btn' + (type === 'desired' ? ' d-active' : '');
+  document.getElementById('acm-title').textContent = type === 'visited' ? 'Add Visited Country' : 'Add Dream Destination';
+  document.getElementById('acm-sub').textContent = type === 'visited' ? 'Countries you have already been to' : 'Countries you want to visit someday';
+}
+function filterAcm(q) {
+  const query = q.toLowerCase().trim();
+  const filtered = query
+    ? COUNTRY_LIST.filter(c => c.name.toLowerCase().includes(query) || c.iso2.toLowerCase().includes(query))
+    : COUNTRY_LIST.slice(0, 60);
+  const el = document.getElementById('acm-results');
+  if (!filtered.length) {
+    el.innerHTML = `<div class="acm-no-results">No countries found</div>`;
+    return;
+  }
+  el.innerHTML = filtered.slice(0, 80).map(c => {
+    const status = getStatus(c.iso2);
+    const already = status !== 'none';
+    const statusText = status === 'visited' ? 'Visited' : status === 'desired' ? 'Dream destination' : '';
+    return `<div class="acm-ri${already ? ' already' : ''}" onclick="selectCountryFromModal('${c.iso2}')">
+      <span class="acm-ri-flag">${flag(c.iso2)}</span>
+      <span class="acm-ri-name">${c.name}</span>
+      ${statusText ? `<span class="acm-ri-status">${statusText}</span>` : ''}
+    </div>`;
+  }).join('');
+}
+function selectCountryFromModal(iso2) {
+  addCountry(iso2, modalType);
+  closeAddModal();
+}
+
+// ═══ INIT ═════════════════════════════════════════════════════════════
+renderSidebar();
+updateStats();
+initMap();
+
+// Close modal on Escape
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeAddModal(); });
+</script>
+</body>
+</html>

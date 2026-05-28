@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: roamr-api
+    env: node
+    buildCommand: npm install
+    startCommand: node server.js
+    disk:
+      name: roamr-data
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DB_PATH
+        value: /var/data/roamr.db
