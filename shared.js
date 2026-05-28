@@ -97,6 +97,4 @@ function initCityAutocomplete(inputId, dropdownId, spinnerId) {
   function select(idx) { const r=results[idx]; if(!r)return; input.value=`${r.name}, ${r.country}`; dropdown.style.display='none'; activeIdx=-1; }
 }
 
-// Signup modal (shared across pages)
-function openSignup() { document.getElementById('signup-modal').classList.add('open'); }
-function closeSignup() { document.getElementById('signup-modal').classList.remove('open'); }
+// Signup/login modal helpers are defined in signup-modal.js

@@ -1,0 +1,114 @@
+ROAMR — PROJECT NOTES
+======================
+
+PROJECT OVERVIEW
+----------------
+Roamr is a travel social app built as a static HTML/CSS/JS site with a Node.js/Express backend.
+Users can browse travelers, view trips/events, and connect with other travelers worldwide.
+
+
+TECH STACK
+----------
+- Frontend: Static HTML, CSS (shared.css), vanilla JavaScript
+- Backend: Node.js + Express (server.js)
+- Database: SQLite via better-sqlite3 (db.js)
+- Fonts: Bebas Neue + Instrument Sans (Google Fonts)
+- Maps: Leaflet.js (used on my-trips.html)
+- City Autocomplete: OpenStreetMap Nominatim API
+
+
+FILE STRUCTURE
+--------------
+index.html          - Homepage / landing page
+discover.html       - Browse travelers
+trips.html          - Community trips board
+my-trips.html       - Personal trips with world map + itinerary
+events.html         - Travel events
+live.html           - Live map of travelers
+profile.html        - User profile page
+nav.html            - Shared nav reference
+shared.css          - Global design tokens, nav, buttons, layout utilities
+shared.js           - Shared data (TRAVELERS, TRIPS, EVENTS), city autocomplete, utilities
+signup-modal.js     - Signup + login modals, API calls to /api/register and /api/login
+server.js           - Express server: serves static files + API endpoints
+db.js               - SQLite database setup and schema
+package.json        - Node.js dependencies
+
+
+DATABASE (SQLite)
+-----------------
+Database file: roamr.db (auto-created on first run)
+To use a custom path, set the DB_PATH environment variable:
+  DB_PATH=/your/path/roamr.db node server.js
+
+Users table schema:
+  id            INTEGER  PRIMARY KEY AUTOINCREMENT
+  username      TEXT     NOT NULL UNIQUE (case-insensitive)
+  email         TEXT     NOT NULL UNIQUE (case-insensitive)
+  password_hash TEXT     NOT NULL (bcrypt, 12 rounds)
+  home_city     TEXT
+  travel_styles TEXT     DEFAULT '[]' (JSON array)
+  created_at    INTEGER  DEFAULT unixepoch()
+
+
+API ENDPOINTS
+-------------
+POST /api/register
+  Body: { username, email, password, homeCity, travelStyles[] }
+  Returns: 201 { success: true } on success
+           400 validation error
+           409 username or email already taken
+           500 server error
+
+POST /api/login
+  Body: { usernameOrEmail, password }
+  Returns: 200 { success: true, user: { id, username, email, homeCity, travelStyles } }
+           400 missing fields
+           401 invalid credentials
+           500 server error
+
+
+GETTING STARTED (First Time Setup)
+-----------------------------------
+1. Install Node.js from https://nodejs.org (LTS version)
+2. Open terminal and run:
+     cd ~/Downloads/roamr
+     npm install
+     npm start
+3. Open browser to http://localhost:3000
+
+For development with auto-reload on file changes:
+     npm run dev
+(requires nodemon, included as a dev dependency)
+
+
+SIGNUP / LOGIN FLOW
+--------------------
+- "Start Your Journey" and "Join Free" buttons open the signup modal
+- Step 1 collects: username, email, confirm email, password, confirm password
+- Step 2 collects: home city, travel style tags
+- On submit, data is POST'd to /api/register and saved to SQLite
+- "Sign in" link inside the modal opens the login modal
+- Login accepts username OR email + password
+
+
+GIT / GITHUB
+------------
+Remote: https://github.com/peony-947/Roamr.git
+Branch: main
+
+To push changes:
+  git add <files>
+  git commit -m "Your message"
+  git push origin main
+
+
+DESIGN SYSTEM (shared.css tokens)
+----------------------------------
+--black:    #0a0a0a
+--white:    #f5f2ec
+--accent:   #e84c2b  (red/orange — primary CTA color)
+--accent2:  #f5a623  (gold — urgency/highlights)
+--muted:    #888078  (secondary text)
+--card-bg:  #141410
+--border:   rgba(255,255,255,0.08)
