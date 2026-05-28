@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Trips — Roamr</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Instrument+Sans:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<style>
+/* ── Page Header ─────────────────────────────────────────────────────── */
+.page-header { padding: 6.5rem 3rem 2rem; border-bottom: 1px solid var(--border); }
+
+/* ── Stats Strip ─────────────────────────────────────────────────────── */
+.stats-row { display:flex; margin-top:2rem; border:1px solid var(--border); border-radius:4px; overflow:hidden; }
+.stat-box { flex:1; padding:1.25rem 1rem; background:var(--card-bg); border-right:1px solid var(--border); text-align:center; }
+.stat-box:last-child { border-right:none; }
+.stat-box .num { font-family:'Bebas Neue',sans-serif; font-size:2.4rem; line-height:1; color:var(--white); }
+.stat-box .lbl { font-size:0.68rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.12em; font-weight:600; margin-top:0.2rem; }
+
+/* ── Map Section ─────────────────────────────────────────────────────── */
+.map-section { padding:0 3rem; border-bottom:1px solid var(--border); background:#080808; }
+.map-header { display:flex; align-items:center; justify-content:space-between; padding:1.1rem 0; }
+.map-header h3 { font-size:0.78rem; font-weight:600; letter-spacing:0.18em; text-transform:uppercase; color:var(--muted); }
+.map-legend { display:flex; gap:1.25rem; flex-wrap:wrap; }
+.legend-item { display:flex; align-items:center; gap:0.45rem; font-size:0.68rem; color:var(--muted); font-weight:600; letter-spacing:0.08em; text-transform:uppercase; }
+.legend-dash { width:22px; height:2px; }
+#trip-map { height:420px; width:100%; }
+
+/* Leaflet dark theme overrides */
+.leaflet-container { background:#0a0a08; font-family:'Instrument Sans',sans-serif; }
+.leaflet-control-zoom a { background:#1a1a14 !important; border-color:rgba(255,255,255,0.12) !important; color:var(--white) !important; }
+.leaflet-control-zoom a:hover { background:#2a2a20 !important; }
+.leaflet-control-attribution { background:rgba(8,8,8,0.8) !important; color:#555 !important; font-size:0.6rem !important; }
+.leaflet-control-attribution a { color:#555 !important; }
+.lt { background:#1a1a14 !important; border:1px solid rgba(255,255,255,0.12) !important; color:var(--white) !important; font-family:'Instrument Sans',sans-serif !important; font-size:0.78rem !important; border-radius:4px !important; box-shadow:0 4px 16px rgba(0,0,0,0.6) !important; padding:0.35rem 0.6rem !important; }
+.lt::before { display:none !important; }
+.leaflet-tooltip-top.lt::before { display:none !important; }
+
+/* ── Trips List ──────────────────────────────────────────────────────── */
+.trips-section { padding:2.5rem 3rem; }
+
+.trip-section { margin-bottom:2.5rem; border:1px solid var(--border); border-radius:10px; overflow:hidden; transition:border-color 0.2s; }
+.trip-section:last-child { margin-bottom:0; }
+.trip-section:hover { border-color:var(--border2); }
+
+.trip-section-header { padding:1.5rem 2rem; background:var(--card-bg2); border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:1rem; }
+.trip-title-row { display:flex; align-items:center; gap:1rem; }
+.trip-emoji { font-size:2.25rem; line-height:1; }
+.trip-name { font-family:'Bebas Neue',sans-serif; font-size:2.2rem; line-height:1; }
+.trip-dateline { font-size:0.82rem; color:var(--muted); margin-top:0.25rem; }
+
+.trip-body { display:grid; grid-template-columns:1fr 1fr; }
+.trip-col { padding:1.75rem 2rem; }
+.trip-col:first-child { border-right:1px solid var(--border); }
+.col-label { font-size:0.68rem; font-weight:600; letter-spacing:0.18em; text-transform:uppercase; color:var(--accent); margin-bottom:1.25rem; }
+
+/* ── Flight Rows ─────────────────────────────────────────────────────── */
+.flight-row { background:#0a0a0a; border:1px solid var(--border); border-radius:6px; padding:1rem; margin-bottom:0.65rem; }
+.flight-row:last-child { margin-bottom:0; }
+.flight-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:0.65rem; }
+.flight-top-left { display:flex; align-items:center; gap:0.5rem; }
+.flight-info-text { font-size:0.75rem; color:var(--muted); font-weight:600; }
+.flight-route { display:flex; align-items:center; gap:0.6rem; margin:0.25rem 0; }
+.flight-code { font-family:'Bebas Neue',sans-serif; font-size:1.6rem; line-height:1; }
+.flight-city { font-size:0.7rem; color:var(--muted); margin-top:0.1rem; }
+.flight-mid { flex:1; display:flex; flex-direction:column; align-items:center; gap:0.2rem; }
+.flight-mid-line { width:100%; height:1px; background:linear-gradient(90deg, rgba(255,255,255,0.08), var(--accent), rgba(255,255,255,0.08)); }
+.flight-mid-plane { font-size:0.9rem; }
+.flight-mid-dur { font-size:0.65rem; color:var(--muted); letter-spacing:0.04em; }
+.flight-times { display:flex; justify-content:space-between; margin-top:0.65rem; padding-top:0.65rem; border-top:1px solid var(--border); }
+.ft-item .ft-val { font-size:0.8rem; font-weight:600; }
+.ft-item .ft-key { font-size:0.65rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.08em; margin-top:0.1rem; }
+.ft-item.right { text-align:right; }
+.ft-item.center { text-align:center; }
+
+/* ── Itinerary Timeline ──────────────────────────────────────────────── */
+.itin-list { }
+.itin-item { display:flex; gap:0.85rem; }
+.itin-dot-col { display:flex; flex-direction:column; align-items:center; padding-top:0.3rem; }
+.itin-dot { width:8px; height:8px; border-radius:50%; background:var(--accent); flex-shrink:0; }
+.itin-line { flex:1; width:1px; background:var(--border); min-height:12px; margin-top:3px; }
+.itin-content { padding-bottom:1rem; min-width:0; }
+.itin-days { font-size:0.65rem; font-weight:600; text-transform:uppercase; letter-spacing:0.12em; color:var(--accent); }
+.itin-title { font-size:0.88rem; font-weight:600; color:var(--white); margin-top:0.1rem; }
+.itin-desc { font-size:0.78rem; color:var(--muted); line-height:1.55; margin-top:0.2rem; }
+
+/* ── Trip Footer ─────────────────────────────────────────────────────── */
+.trip-section-footer { padding:1rem 2rem; border-top:1px solid var(--border); background:var(--card-bg); display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:0.75rem; }
+.trip-meta { display:flex; align-items:center; gap:1.25rem; flex-wrap:wrap; }
+.trip-meta-item { font-size:0.78rem; color:var(--muted); display:flex; align-items:center; gap:0.35rem; }
+
+/* ── Responsive ──────────────────────────────────────────────────────── */
+@media(max-width:900px){
+  .page-header{padding:5.5rem 1.5rem 1.5rem}
+  .stats-row{flex-wrap:wrap}
+  .stat-box{min-width:50%;flex:none;width:50%}
+  .stat-box:nth-child(2){border-right:none}
+  .stat-box:nth-child(3){border-top:1px solid var(--border)}
+  .stat-box:nth-child(4){border-top:1px solid var(--border);border-right:none}
+  .stat-box:nth-child(5){border-top:1px solid var(--border);width:100%;min-width:100%}
+  .map-section{padding:0 1.5rem}
+  .trips-section{padding:1.5rem}
+  .trip-body{grid-template-columns:1fr}
+  .trip-col:first-child{border-right:none;border-bottom:1px solid var(--border)}
+  #trip-map{height:280px}
+  .trip-section-header{flex-direction:column;align-items:flex-start}
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="index.html" class="logo">Roam<span>r</span></a>
+  <ul>
+    <li class="hide-mobile"><a href="discover.html">Discover</a></li>
+    <li class="hide-mobile"><a href="trips.html">Trips</a></li>
+    <li class="hide-mobile"><a href="my-trips.html" class="active">My Trips</a></li>
+    <li class="hide-mobile"><a href="events.html">Events</a></li>
+    <li class="hide-mobile"><a href="live.html">Live Map</a></li>
+    <li><a href="#" class="nav-cta" onclick="event.preventDefault();openSignup()">Join Free</a></li>
+  </ul>
+</nav>
+
+<!-- ── Page Header ──────────────────────────────────────────────────── -->
+<div class="page-header">
+  <div class="flex justify-between items-center" style="flex-wrap:wrap;gap:1.25rem">
+    <div>
+      <div class="section-label">Your Travel Plans</div>
+      <h1 style="font-family:'Bebas Neue',sans-serif;font-size:clamp(2.5rem,5vw,4rem);line-height:1">My Trips</h1>
+      <p class="text-muted mt-1">Flights, itineraries, and companions for every upcoming adventure.</p>
+    </div>
+    <button class="btn btn-primary" onclick="openSignup()">+ Plan a New Trip</button>
+  </div>
+  <div class="stats-row">
+    <div class="stat-box"><div class="num">2</div><div class="lbl">Upcoming Trips</div></div>
+    <div class="stat-box"><div class="num">3</div><div class="lbl">Countries</div></div>
+    <div class="stat-box"><div class="num">5</div><div class="lbl">Flights Booked</div></div>
+    <div class="stat-box"><div class="num" id="stat-miles">—</div><div class="lbl">Total Miles</div></div>
+    <div class="stat-box"><div class="num">48</div><div class="lbl">Days to Next Trip</div></div>
+  </div>
+</div>
+
+<!-- ── World Map ─────────────────────────────────────────────────────── -->
+<div class="map-section">
+  <div class="map-header">
+    <h3>Flight Paths &amp; Destinations</h3>
+    <div class="map-legend">
+      <div class="legend-item"><div class="legend-dash" style="background:#e84c2b"></div>Outbound</div>
+      <div class="legend-item"><div class="legend-dash" style="background:#5b9cf6"></div>Connecting</div>
+      <div class="legend-item"><div class="legend-dash" style="background:#444;border-top:2px dashed #555"></div>Return</div>
+    </div>
+  </div>
+  <div id="trip-map"></div>
+</div>
+
+<!-- ── Trip Cards ────────────────────────────────────────────────────── -->
+<div class="trips-section" id="trips-list"></div>
+
+<footer>
+  <div><div class="footer-logo">Roam<span>r</span></div><p style="margin-top:0.5rem">© 2026 Roamr Inc. All rights reserved.</p></div>
+  <div class="footer-links"><a href="index.html">Home</a><a href="discover.html">Discover</a><a href="trips.html">Trips</a><a href="events.html">Events</a><a href="live.html">Live</a></div>
+</footer>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="shared.js"></script>
+<script src="signup-modal.js"></script>
+<script>
+renderSignupModal();
+
+// ── Trip Data ──────────────────────────────────────────────────────────
+const MY_TRIPS = [
+  {
+    id: 1,
+    destination: 'Tokyo, Japan',
+    emoji: '🗼',
+    status: 'upcoming',
+    dates: 'Jul 14 – Jul 28, 2026',
+    daysLeft: 48,
+    accommodation: 'Park Hyatt Tokyo, Shinjuku',
+    companions: ['MT', 'SK'],
+    tags: ['Culture', 'Food', 'City'],
+    color: '#e84c2b',
+    flights: [
+      {
+        type: 'Outbound',
+        from: { name: 'New York',  code: 'JFK', coords: [40.6413, -73.7781] },
+        to:   { name: 'Tokyo',     code: 'NRT', coords: [35.7647, 140.3864] },
+        airline: 'ANA', flightNo: 'NH 009',
+        departs: 'Jul 14 · 12:55 PM', arrives: 'Jul 15 · 3:40 PM',
+        duration: '14h 45m', cabinClass: 'Business'
+      },
+      {
+        type: 'Return',
+        from: { name: 'Tokyo',     code: 'NRT', coords: [35.7647, 140.3864] },
+        to:   { name: 'New York',  code: 'JFK', coords: [40.6413, -73.7781] },
+        airline: 'ANA', flightNo: 'NH 010',
+        departs: 'Jul 28 · 5:30 PM', arrives: 'Jul 28 · 6:15 PM',
+        duration: '13h 45m', cabinClass: 'Business'
+      }
+    ],
+    itinerary: [
+      { days: 'Day 1',    title: 'Arrival & Shinjuku',       desc: 'Land at NRT, check in, evening stroll through Kabukicho and Memory Lane (Omoide Yokocho)' },
+      { days: 'Day 2–3',  title: 'Tokyo Icons',              desc: 'Shibuya Crossing, Harajuku, Meiji Shrine, Yoyogi Park, Omotesandō shopping' },
+      { days: 'Day 4–5',  title: 'Kyoto Day Trips',          desc: 'Shinkansen to Kyoto — Fushimi Inari gates, Arashiyama bamboo grove, Gion lantern district' },
+      { days: 'Day 6–7',  title: 'Osaka Interlude',          desc: 'Street food in Dōtonbori, Osaka Castle, afternoon in Nara among the deer' },
+      { days: 'Day 8–12', title: 'Tokyo Deep Dive',          desc: 'Akihabara, Yanaka old town, teamLab Planets, Odaiba waterfront, rooftop bars in Roppongi' },
+      { days: 'Day 13',   title: 'Last Morning in Asakusa',  desc: 'Senso-ji Temple at dawn, Nakamise shopping arcade, final afternoon packing' },
+      { days: 'Day 14',   title: 'Departure',                desc: 'Transfer to NRT, NH 010 departs 5:30 PM' }
+    ]
+  },
+  {
+    id: 2,
+    destination: 'Barcelona & Lisbon',
+    emoji: '🏛',
+    status: 'upcoming',
+    dates: 'Aug 20 – Sep 6, 2026',
+    daysLeft: 85,
+    accommodation: 'Hotel Arts Barcelona · Bairro Alto Hotel, Lisbon',
+    companions: [],
+    tags: ['Architecture', 'Beach', 'Foodie', 'Solo'],
+    color: '#5b9cf6',
+    flights: [
+      {
+        type: 'Outbound',
+        from: { name: 'New York',   code: 'JFK', coords: [40.6413, -73.7781] },
+        to:   { name: 'Barcelona',  code: 'BCN', coords: [41.2974,   2.0833] },
+        airline: 'Iberia', flightNo: 'IB 6275',
+        departs: 'Aug 20 · 8:30 PM', arrives: 'Aug 21 · 9:45 AM',
+        duration: '7h 15m', cabinClass: 'Economy'
+      },
+      {
+        type: 'Connecting',
+        from: { name: 'Barcelona',  code: 'BCN', coords: [41.2974,  2.0833] },
+        to:   { name: 'Lisbon',     code: 'LIS', coords: [38.7742, -9.1342] },
+        airline: 'Vueling', flightNo: 'VY 1806',
+        departs: 'Sep 1 · 11:10 AM', arrives: 'Sep 1 · 12:40 PM',
+        duration: '1h 30m', cabinClass: 'Economy'
+      },
+      {
+        type: 'Return',
+        from: { name: 'Lisbon',     code: 'LIS', coords: [38.7742, -9.1342] },
+        to:   { name: 'New York',   code: 'JFK', coords: [40.6413, -73.7781] },
+        airline: 'TAP Air Portugal', flightNo: 'TP 201',
+        departs: 'Sep 6 · 11:30 AM', arrives: 'Sep 6 · 1:45 PM',
+        duration: '8h 15m', cabinClass: 'Economy'
+      }
+    ],
+    itinerary: [
+      { days: 'Day 1–2',   title: 'Gothic Quarter & La Boqueria', desc: 'Arrive BCN, explore Barri Gòtic, Las Ramblas, La Boqueria market, tapas crawl in El Born' },
+      { days: 'Day 3–5',   title: 'Gaudí Architecture',           desc: 'Sagrada Família, Park Güell, Casa Batlló, Palau de la Música Catalana' },
+      { days: 'Day 6–7',   title: 'Costa Brava Day Trips',        desc: 'Girona medieval walls, Salvador Dalí Museum in Figueres' },
+      { days: 'Day 8–11',  title: 'Barceloneta & Poblenou',       desc: 'Beach mornings, seafood paella, cocktail bars in El Born and Gràcia' },
+      { days: 'Day 12–13', title: 'Lisbon Arrival',               desc: 'Fly VY 1806 to LIS, Alfama district, Belém Tower, pastel de nata at Pastéis de Belém' },
+      { days: 'Day 14–17', title: 'Lisbon & Sintra',              desc: 'Bairro Alto night life, LX Factory Sunday market, full day in Sintra & Cascais coast' },
+      { days: 'Day 18',    title: 'Departure',                     desc: 'Mercado da Ribeira breakfast, TP 201 departs 11:30 AM from LIS' }
+    ]
+  }
+];
+
+// ── Haversine distance (km) ────────────────────────────────────────────
+function haversine(lat1, lon1, lat2, lon2) {
+  const R = 6371, r = d => d * Math.PI / 180;
+  const dLat = r(lat2-lat1), dLon = r(lon2-lon1);
+  const a = Math.sin(dLat/2)**2 + Math.cos(r(lat1))*Math.cos(r(lat2))*Math.sin(dLon/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+// ── Great-circle arc points (handles antimeridian crossing) ───────────
+function gcPoints(lat1, lon1, lat2, lon2, n = 80) {
+  const r = d => d * Math.PI / 180, deg = r => r * 180 / Math.PI;
+  const φ1 = r(lat1), λ1 = r(lon1), φ2 = r(lat2), λ2 = r(lon2);
+  const d = 2 * Math.asin(Math.sqrt(
+    Math.sin((φ2-φ1)/2)**2 + Math.cos(φ1)*Math.cos(φ2)*Math.sin((λ2-λ1)/2)**2
+  ));
+  if (d < 1e-4) return [[lat1,lon1],[lat2,lon2]];
+  const pts = [];
+  for (let i = 0; i <= n; i++) {
+    const f = i / n;
+    const A = Math.sin((1-f)*d)/Math.sin(d), B = Math.sin(f*d)/Math.sin(d);
+    const x = A*Math.cos(φ1)*Math.cos(λ1) + B*Math.cos(φ2)*Math.cos(λ2);
+    const y = A*Math.cos(φ1)*Math.sin(λ1) + B*Math.cos(φ2)*Math.sin(λ2);
+    const z = A*Math.sin(φ1) + B*Math.sin(φ2);
+    pts.push([deg(Math.atan2(z, Math.sqrt(x*x+y*y))), deg(Math.atan2(y,x))]);
+  }
+  // Unwrap longitudes so the line doesn't jump across the antimeridian
+  for (let i = 1; i < pts.length; i++) {
+    while (pts[i][1] - pts[i-1][1] >  180) pts[i][1] -= 360;
+    while (pts[i][1] - pts[i-1][1] < -180) pts[i][1] += 360;
+  }
+  return pts;
+}
+
+// ── Build the Map ──────────────────────────────────────────────────────
+const map = L.map('trip-map', { zoomControl: true, scrollWheelZoom: false }).setView([30, 0], 2);
+
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+  attribution: '&copy; <a href="https://carto.com/">CartoDB</a>',
+  maxZoom: 19
+}).addTo(map);
+
+function dotMarker(color) {
+  return L.divIcon({
+    className: '',
+    html: `<div style="width:10px;height:10px;border-radius:50%;background:${color};border:2px solid rgba(255,255,255,0.55);box-shadow:0 0 8px ${color}88"></div>`,
+    iconSize: [10,10], iconAnchor: [5,5]
+  });
+}
+
+const TYPE_COLOR = { Outbound: '#e84c2b', Connecting: '#5b9cf6', Return: '#4a4a4a' };
+const TYPE_DASH  = { Outbound: null,       Connecting: null,       Return: '7 5' };
+const TYPE_OPT  = { Outbound: 0.85,        Connecting: 0.85,       Return: 0.45 };
+
+let totalMiles = 0;
+const seenAirports = new Set();
+
+MY_TRIPS.forEach(trip => {
+  trip.flights.forEach(fl => {
+    const color = TYPE_COLOR[fl.type] || '#888';
+    const pts = gcPoints(fl.from.coords[0], fl.from.coords[1], fl.to.coords[0], fl.to.coords[1]);
+
+    const poly = L.polyline(pts, {
+      color,
+      weight: fl.type === 'Return' ? 1.5 : 2.5,
+      opacity: TYPE_OPT[fl.type] || 0.7,
+      dashArray: TYPE_DASH[fl.type] || null
+    }).addTo(map);
+
+    // Animate the path drawing in
+    if (fl.type !== 'Return') {
+      requestAnimationFrame(() => {
+        const el = poly.getElement();
+        if (!el) return;
+        try {
+          const len = el.getTotalLength();
+          el.style.strokeDasharray = len;
+          el.style.strokeDashoffset = len;
+          el.style.transition = 'stroke-dashoffset 2.2s cubic-bezier(0.4,0,0.2,1)';
+          setTimeout(() => { el.style.strokeDashoffset = 0; }, 150);
+        } catch(e) {}
+      });
+    }
+
+    [fl.from, fl.to].forEach(ap => {
+      const key = `${ap.coords[0].toFixed(2)},${ap.coords[1].toFixed(2)}`;
+      if (!seenAirports.has(key)) {
+        seenAirports.add(key);
+        L.marker(ap.coords, { icon: dotMarker(color) })
+          .bindTooltip(`<strong>${ap.code}</strong> — ${ap.name}`, { direction:'top', className:'lt' })
+          .addTo(map);
+      }
+    });
+
+    totalMiles += Math.round(haversine(fl.from.coords[0], fl.from.coords[1], fl.to.coords[0], fl.to.coords[1]) * 0.621371);
+  });
+});
+
+document.getElementById('stat-miles').textContent = (Math.round(totalMiles / 100) * 100).toLocaleString();
+
+// ── Badge helpers ──────────────────────────────────────────────────────
+const TYPE_BADGE = { Outbound: 'badge-accent', Connecting: 'badge-blue', Return: 'badge-muted' };
+
+function renderFlights(flights) {
+  return flights.map(fl => `
+    <div class="flight-row">
+      <div class="flight-top">
+        <div class="flight-top-left">
+          <span class="badge ${TYPE_BADGE[fl.type] || 'badge-muted'}">${fl.type}</span>
+          <span class="flight-info-text">${fl.airline} · ${fl.flightNo}</span>
+        </div>
+        <span class="badge badge-muted" style="font-size:0.65rem">${fl.cabinClass}</span>
+      </div>
+      <div class="flight-route">
+        <div>
+          <div class="flight-code">${fl.from.code}</div>
+          <div class="flight-city">${fl.from.name}</div>
+        </div>
+        <div class="flight-mid">
+          <div class="flight-mid-plane">✈</div>
+          <div class="flight-mid-line"></div>
+          <div class="flight-mid-dur">${fl.duration}</div>
+        </div>
+        <div style="text-align:right">
+          <div class="flight-code">${fl.to.code}</div>
+          <div class="flight-city">${fl.to.name}</div>
+        </div>
+      </div>
+      <div class="flight-times">
+        <div class="ft-item"><div class="ft-val">${fl.departs}</div><div class="ft-key">Departs</div></div>
+        <div class="ft-item right"><div class="ft-val">${fl.arrives}</div><div class="ft-key">Arrives</div></div>
+      </div>
+    </div>`).join('');
+}
+
+function renderItinerary(itin) {
+  return `<div class="itin-list">${itin.map((item, i) => `
+    <div class="itin-item">
+      <div class="itin-dot-col">
+        <div class="itin-dot"></div>
+        ${i < itin.length - 1 ? '<div class="itin-line"></div>' : ''}
+      </div>
+      <div class="itin-content">
+        <div class="itin-days">${item.days}</div>
+        <div class="itin-title">${item.title}</div>
+        <div class="itin-desc">${item.desc}</div>
+      </div>
+    </div>`).join('')}</div>`;
+}
+
+// ── Render Trip Sections ───────────────────────────────────────────────
+document.getElementById('trips-list').innerHTML = MY_TRIPS.map(trip => `
+  <div class="trip-section">
+    <div class="trip-section-header">
+      <div class="trip-title-row">
+        <div class="trip-emoji">${trip.emoji}</div>
+        <div>
+          <div class="trip-name">${trip.destination}</div>
+          <div class="trip-dateline">📅 ${trip.dates} &nbsp;·&nbsp;
+            <span style="color:${trip.daysLeft < 60 ? 'var(--accent)' : 'var(--accent2)'}">
+              ${trip.daysLeft} days away
+            </span>
+          </div>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="badge badge-gold">UPCOMING</span>
+        <button class="btn btn-ghost btn-sm" onclick="openSignup()">Edit</button>
+        <button class="btn btn-primary btn-sm" onclick="openSignup()">Share Trip</button>
+      </div>
+    </div>
+
+    <div class="trip-body">
+      <div class="trip-col">
+        <div class="col-label">✈ Flights</div>
+        ${renderFlights(trip.flights)}
+      </div>
+      <div class="trip-col">
+        <div class="col-label">🗓 Itinerary</div>
+        ${renderItinerary(trip.itinerary)}
+      </div>
+    </div>
+
+    <div class="trip-section-footer">
+      <div class="trip-meta">
+        <div class="trip-meta-item">🏨 ${trip.accommodation}</div>
+        ${trip.companions.length
+          ? `<div class="trip-meta-item">👥 ${trip.companions.length} companion${trip.companions.length > 1 ? 's' : ''}</div>`
+          : `<div class="trip-meta-item">🧳 Solo trip</div>`}
+      </div>
+      <div class="flex gap-1" style="flex-wrap:wrap">
+        ${trip.tags.map(t => `<span class="badge badge-muted">${t}</span>`).join('')}
+      </div>
+    </div>
+  </div>`).join('');
+</script>
+</body>
+</html>
